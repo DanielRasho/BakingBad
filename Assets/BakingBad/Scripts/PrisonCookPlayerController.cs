@@ -190,7 +190,8 @@ public class PrisonCookPlayerController : MonoBehaviour
     {
 #if ENABLE_INPUT_SYSTEM
         Keyboard keyboard = Keyboard.current;
-        if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+        if (keyboard != null &&
+            (keyboard.spaceKey.wasPressedThisFrame || keyboard.eKey.wasPressedThisFrame))
         {
             return true;
         }
