@@ -35,9 +35,22 @@ public class PrisonCookPlayerController : MonoBehaviour
     [SerializeField] private LayerMask interactLayers = ~0;
     [SerializeField] private bool logInteractions = true;
 
+    [Header("Carry")]
+    [SerializeField] private Transform carryAnchor;
+    [SerializeField] private Vector3 carryAnchorLocalPosition = new Vector3(0f, 0.95f, -0.28f);
+    [SerializeField] private float pickupRange = 0.65f;
+    [SerializeField] private float pickupHeight = 0.18f;
+    [SerializeField] private float pickupRadius = 0.55f;
+    [SerializeField] private Vector3 dropOffset = new Vector3(0f, 0.12f, 0f);
+    [SerializeField] private float dropForwardDistance = 0.7f;
+    [SerializeField] private float dropRayHeight = 2f;
+    [SerializeField] private float dropRayDistance = 4f;
+
     private CharacterController controller;
     private CardinalDirection currentFacing;
     private KitchenInteractableStation currentInteractable;
+    private CakePickup currentCakePickup;
+    private CakePickup heldCake;
     private Vector3 dashDirection;
     private float dashTimeRemaining;
     private float dashCooldownRemaining;
@@ -50,6 +63,11 @@ public class PrisonCookPlayerController : MonoBehaviour
     public bool InputLocked
     {
         get { return inputLockCount > 0; }
+    }
+
+    public bool HasHeldCake
+    {
+        get { return heldCake != null; }
     }
 
     public void AddInputLock()
@@ -71,6 +89,7 @@ public class PrisonCookPlayerController : MonoBehaviour
             movementCamera = Camera.main;
         }
 
+        EnsureCarryAnchor();
         currentFacing = startingDirection;
         ApplyFacingRotation();
     }
@@ -78,6 +97,7 @@ public class PrisonCookPlayerController : MonoBehaviour
     private void OnEnable()
     {
         EnsureController();
+        EnsureCarryAnchor();
         currentFacing = startingDirection;
         ApplyFacingRotation();
     }
@@ -103,6 +123,14 @@ public class PrisonCookPlayerController : MonoBehaviour
                 ApplyFacingRotation();
             }
 
+            currentCakePickup = FindCurrentCakePickup();
+            SetCurrentInteractable(FindCurrentInteractable());
+            return;
+        }
+
+        if (WasDropPressedThisFrame() && heldCake != null)
+        {
+            DropHeldCake();
             SetCurrentInteractable(FindCurrentInteractable());
             return;
         }
@@ -147,6 +175,7 @@ public class PrisonCookPlayerController : MonoBehaviour
             ApplyFacingRotation();
         }
 
+        currentCakePickup = FindCurrentCakePickup();
         SetCurrentInteractable(FindCurrentInteractable());
 
         if (WasInteractPressedThisFrame())
@@ -191,7 +220,20 @@ public class PrisonCookPlayerController : MonoBehaviour
 #if ENABLE_INPUT_SYSTEM
         Keyboard keyboard = Keyboard.current;
         if (keyboard != null &&
-            (keyboard.spaceKey.wasPressedThisFrame || keyboard.eKey.wasPressedThisFrame))
+            (keyboard.eKey.wasPressedThisFrame || (heldCake == null && keyboard.spaceKey.wasPressedThisFrame)))
+        {
+            return true;
+        }
+#endif
+
+        return false;
+    }
+
+    private bool WasDropPressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
         {
             return true;
         }
@@ -366,8 +408,88 @@ public class PrisonCookPlayerController : MonoBehaviour
         }
     }
 
+    private void EnsureCarryAnchor()
+    {
+        if (carryAnchor != null)
+        {
+            return;
+        }
+
+        Transform existing = transform.Find("CarryAnchor");
+        if (existing != null)
+        {
+            carryAnchor = existing;
+            return;
+        }
+
+        GameObject anchorObject = new GameObject("CarryAnchor");
+        carryAnchor = anchorObject.transform;
+        carryAnchor.SetParent(transform, false);
+        carryAnchor.localPosition = carryAnchorLocalPosition;
+        carryAnchor.localRotation = Quaternion.identity;
+    }
+
+    public bool TryHoldCake(CakePickup cakePickup)
+    {
+        if (cakePickup == null)
+        {
+            return false;
+        }
+
+        EnsureCarryAnchor();
+
+        if (carryAnchor == null || heldCake != null)
+        {
+            return false;
+        }
+
+        heldCake = cakePickup;
+        heldCake.AttachTo(carryAnchor);
+        return true;
+    }
+
+    public void DropHeldCake()
+    {
+        if (heldCake == null)
+        {
+            return;
+        }
+
+        Vector3 forward = GetFacingVector();
+        Vector3 dropPosition = transform.position + forward * dropForwardDistance + dropOffset;
+        Vector3 rayOrigin = dropPosition + Vector3.up * dropRayHeight;
+
+        if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, dropRayDistance, ~0, QueryTriggerInteraction.Ignore))
+        {
+            dropPosition = hit.point + dropOffset;
+        }
+
+        heldCake.DropAt(dropPosition, Quaternion.identity);
+        heldCake = null;
+    }
+
     private void TryInteract()
     {
+        if (heldCake == null)
+        {
+            CakePickup pickupTarget = currentCakePickup != null
+                ? currentCakePickup
+                : FindCurrentCakePickup();
+
+            if (pickupTarget != null && !pickupTarget.IsHeld)
+            {
+                if (TryHoldCake(pickupTarget))
+                {
+                    if (logInteractions)
+                    {
+                        Debug.Log("Interact: picked up cake " + pickupTarget.OrderTitle);
+                    }
+
+                    return;
+                }
+            }
+        }
+
         KitchenInteractableStation target = currentInteractable != null
             ? currentInteractable
             : FindCurrentInteractable();
@@ -423,6 +545,24 @@ public class PrisonCookPlayerController : MonoBehaviour
         return closestStation;
     }
 
+    private CakePickup FindCurrentCakePickup()
+    {
+        if (heldCake != null)
+        {
+            return null;
+        }
+
+        Vector3 facing = GetFacingVector();
+        CakePickup forwardPickup = FindClosestCakePickupAt(GetPickupCenter(facing), pickupRadius);
+        if (forwardPickup != null)
+        {
+            return forwardPickup;
+        }
+
+        Vector3 nearbyCenter = transform.position + Vector3.up * pickupHeight;
+        return FindClosestCakePickupAt(nearbyCenter, pickupRadius * 1.2f);
+    }
+
     private void SetCurrentInteractable(KitchenInteractableStation nextInteractable)
     {
         if (currentInteractable == nextInteractable)
@@ -448,10 +588,50 @@ public class PrisonCookPlayerController : MonoBehaviour
         return transform.position + Vector3.up * interactHeight + facing * interactRange;
     }
 
+    private Vector3 GetPickupCenter(Vector3 facing)
+    {
+        return transform.position + Vector3.up * pickupHeight + facing * pickupRange;
+    }
+
+    private CakePickup FindClosestCakePickupAt(Vector3 center, float radius)
+    {
+        Collider[] hits = Physics.OverlapSphere(center, radius, interactLayers, QueryTriggerInteraction.Collide);
+        CakePickup closestPickup = null;
+        float closestDistance = float.MaxValue;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider hit = hits[i];
+            if (hit == null || hit.transform == transform || hit.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            CakePickup pickup = hit.GetComponentInParent<CakePickup>();
+            if (pickup == null || pickup.IsHeld)
+            {
+                continue;
+            }
+
+            Vector3 nearestPoint = hit.bounds.ClosestPoint(center);
+            float distance = (nearestPoint - center).sqrMagnitude;
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestPickup = pickup;
+            }
+        }
+
+        return closestPickup;
+    }
+
     private void OnDrawGizmosSelected()
     {
         Vector3 direction = Application.isPlaying ? GetFacingVector() : GetCardinalVector(startingDirection);
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(GetInteractCenter(direction), interactRadius);
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(GetPickupCenter(direction), pickupRadius);
+        Gizmos.DrawWireSphere(transform.position + Vector3.up * pickupHeight, pickupRadius * 1.2f);
     }
 }
