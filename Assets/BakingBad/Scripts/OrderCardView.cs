@@ -23,6 +23,7 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
     [SerializeField] private Color idleColor = new Color(0.98f, 0.97f, 0.94f, 1f);
     [SerializeField] private Color selectedColor = new Color(1f, 0.95f, 0.82f, 1f);
     [SerializeField] private Color activeColor = new Color(1f, 0.87f, 0.55f, 1f);
+    [SerializeField] private Color completedColor = new Color(0.83f, 0.94f, 0.82f, 1f);
     [SerializeField] private Color disabledColor = new Color(0.84f, 0.84f, 0.84f, 1f);
     [SerializeField] private Color textIdleColor = new Color(0f, 0f, 0f, 1f);
     [SerializeField] private Color textActiveColor = new Color(0.22f, 0.14f, 0.02f, 1f);
@@ -36,6 +37,7 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
     private Vector2 originalAnchoredPosition;
     private bool isSelected;
     private bool isActive;
+    private bool isCompleted;
     private bool isInteractable;
     private bool isDragging;
     private bool isGeometryHovered;
@@ -189,6 +191,23 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
         ApplyVisuals();
     }
 
+    public void SetCompletedState(bool completed)
+    {
+        isCompleted = completed;
+        ApplyVisuals();
+    }
+
+    public void SetStatus(string nextStatus, bool visible)
+    {
+        if (statusText == null)
+        {
+            return;
+        }
+
+        statusText.text = nextStatus;
+        statusText.gameObject.SetActive(visible);
+    }
+
     public void SetInteractable(bool interactable)
     {
         isInteractable = interactable;
@@ -255,6 +274,10 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
             {
                 targetColor = disabledColor;
             }
+            else if (isCompleted)
+            {
+                targetColor = completedColor;
+            }
             else if (isActive)
             {
                 targetColor = activeColor;
@@ -267,13 +290,17 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
             cardBackground.color = targetColor;
         }
 
-        Color textColor = isActive ? textActiveColor : textIdleColor;
+        Color textColor = (isActive || isCompleted) ? textActiveColor : textIdleColor;
         if (cellText != null) cellText.color = textColor;
         if (payoutText != null) payoutText.color = textColor;
 
         if (statusText != null)
         {
-            statusText.gameObject.SetActive(isActive);
+            if (!statusText.gameObject.activeSelf && (isActive || isCompleted))
+            {
+                statusText.gameObject.SetActive(true);
+            }
+
             statusText.color = textActiveColor;
         }
 
