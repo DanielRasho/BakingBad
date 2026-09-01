@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 796d126e0f08e9d40bdf8f32faeef3de
+guid: efb99fb0bf0f44e45b23162e4a87b8bb
 NativeFormatImporter:
   externalObjects: {}
-  mainObjectFileID: 2100000
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Materials/Color.mat
-  uploadId: 417454

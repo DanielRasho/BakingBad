@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: b4d158e3fd9fc40488877a2530c31fd2
+guid: 77d5c7e62ab02b24f850f64989f329f9
 NativeFormatImporter:
   externalObjects: {}
-  mainObjectFileID: 2100000
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Meshes/Materials/T_FloorTiles_A.mat
-  uploadId: 417454

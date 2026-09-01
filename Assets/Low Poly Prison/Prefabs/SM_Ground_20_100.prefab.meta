@@ -1,15 +1,7 @@
 fileFormatVersion: 2
-guid: f88d42808fe18094dbfc95adb8113dba
-NativeFormatImporter:
+guid: 276d38c84f3985445ab467fd3380708f
+PrefabImporter:
   externalObjects: {}
-  mainObjectFileID: 100100000
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Prefabs/SM_Ground_20_100.prefab
-  uploadId: 417454

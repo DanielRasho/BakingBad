@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 54ecc3b63b15b824fafad331bcf61fe1
+guid: 3c7cc6bb9a3bed74887632a9efbf2ae0
 NativeFormatImporter:
   externalObjects: {}
   mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Materials/T_Generic_Colors 3.mat
-  uploadId: 417454

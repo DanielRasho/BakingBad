@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 4c0f9efe506e4d4419ab8b8561ba4c59
-timeCreated: 1486665416
-licenseType: Store
+guid: 4c530f47b26ff9944870c5bce242e734
 NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Materials/Wall_Yellow_A.mat
-  uploadId: 417454

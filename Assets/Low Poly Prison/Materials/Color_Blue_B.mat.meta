@@ -1,16 +1,8 @@
 fileFormatVersion: 2
-guid: fe52c65e72de1284b899bb450aea93e9
-timeCreated: 1551450491
-licenseType: Store
+guid: 7c5cd91c1c494944c89cdc548d7e3fd0
 NativeFormatImporter:
-  mainObjectFileID: 2100000
+  externalObjects: {}
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Materials/Color_Blue_B.mat
-  uploadId: 417454

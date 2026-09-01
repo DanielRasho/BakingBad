@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 319245d9a6e57b048ad2ef56f2cafcfc
-timeCreated: 1486665416
-licenseType: Store
+guid: c1174d86e3b3c724b8bcc1a3b2e79e64
 NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Materials/Wall_Green_B.mat
-  uploadId: 417454

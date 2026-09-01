@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 884fe005abb55174eb7ba32cabb993f3
+guid: 1c7d58f32499ee6478981be6a91d4059
 NativeFormatImporter:
   externalObjects: {}
   mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 188741
-  packageName: Prison Low Poly
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Prison/Materials/Wall.mat
-  uploadId: 417454
