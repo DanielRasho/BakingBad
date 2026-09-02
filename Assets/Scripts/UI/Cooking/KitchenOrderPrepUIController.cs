@@ -1688,12 +1688,46 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Renderer renderer = cakeObject.GetComponent<Renderer>();
         if (renderer != null)
         {
-            renderer.material.color = GetCakeColorFromTopping(order.SelectedTopping);
+            renderer.sharedMaterial = CreateCakeRuntimeMaterial(GetCakeColorFromTopping(order.SelectedTopping));
         }
 
         CakePickup cakePickup = cakeObject.AddComponent<CakePickup>();
         cakePickup.Initialize(order.Data.id, order.Data.orderTitle, CalculateFinalPayout(order));
         return playerController.TryHoldCake(cakePickup);
+    }
+
+    private static Material CreateCakeRuntimeMaterial(Color cakeColor)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null)
+        {
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        }
+
+        if (shader == null)
+        {
+            shader = Shader.Find("Sprites/Default");
+        }
+
+        if (shader == null)
+        {
+            shader = Shader.Find("Unlit/Color");
+        }
+
+        Material material = shader != null
+            ? new Material(shader)
+            : new Material(Shader.Find("Standard"));
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", cakeColor);
+        }
+        else if (material.HasProperty("_Color"))
+        {
+            material.SetColor("_Color", cakeColor);
+        }
+
+        return material;
     }
 
     private void SetToppingButtonsInteractable(bool interactable)

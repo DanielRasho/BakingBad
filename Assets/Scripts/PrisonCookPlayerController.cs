@@ -38,9 +38,10 @@ public class PrisonCookPlayerController : MonoBehaviour
     [Header("Carry")]
     [SerializeField] private Transform carryAnchor;
     [SerializeField] private Vector3 carryAnchorLocalPosition = new Vector3(0f, 0.95f, -0.28f);
-    [SerializeField] private float pickupRange = 0.65f;
+    [SerializeField] private LayerMask pickupLayers = ~0;
+    [SerializeField] private float pickupRange = 0.8f;
     [SerializeField] private float pickupHeight = 0.18f;
-    [SerializeField] private float pickupRadius = 0.55f;
+    [SerializeField] private float pickupRadius = 0.75f;
     [SerializeField] private Vector3 dropOffset = new Vector3(0f, 0.12f, 0f);
     [SerializeField] private float dropForwardDistance = 0.7f;
     [SerializeField] private float dropRayHeight = 2f;
@@ -595,7 +596,7 @@ public class PrisonCookPlayerController : MonoBehaviour
 
     private CakePickup FindClosestCakePickupAt(Vector3 center, float radius)
     {
-        Collider[] hits = Physics.OverlapSphere(center, radius, interactLayers, QueryTriggerInteraction.Collide);
+        Collider[] hits = Physics.OverlapSphere(center, radius, pickupLayers, QueryTriggerInteraction.Collide);
         CakePickup closestPickup = null;
         float closestDistance = float.MaxValue;
 

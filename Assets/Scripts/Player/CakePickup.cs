@@ -32,7 +32,7 @@ public class CakePickup : MonoBehaviour
 
     private void Awake()
     {
-        cachedCollider = GetComponent<Collider>();
+        EnsurePickupCollider();
     }
 
     public void Initialize(string nextOrderId, string nextOrderTitle, int nextPayoutValue)
@@ -56,7 +56,7 @@ public class CakePickup : MonoBehaviour
 
         if (cachedCollider == null)
         {
-            cachedCollider = GetComponent<Collider>();
+            EnsurePickupCollider();
         }
 
         if (cachedCollider != null)
@@ -73,12 +73,27 @@ public class CakePickup : MonoBehaviour
 
         if (cachedCollider == null)
         {
-            cachedCollider = GetComponent<Collider>();
+            EnsurePickupCollider();
         }
 
         if (cachedCollider != null)
         {
+            cachedCollider.isTrigger = true;
             cachedCollider.enabled = true;
         }
+    }
+
+    private void EnsurePickupCollider()
+    {
+        cachedCollider = GetComponent<Collider>();
+        if (cachedCollider == null)
+        {
+            SphereCollider sphereCollider = gameObject.AddComponent<SphereCollider>();
+            sphereCollider.radius = 0.55f;
+            sphereCollider.center = new Vector3(0f, 0.25f, 0f);
+            cachedCollider = sphereCollider;
+        }
+
+        cachedCollider.isTrigger = true;
     }
 }
