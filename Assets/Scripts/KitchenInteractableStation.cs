@@ -78,9 +78,13 @@ public class KitchenInteractableStation : MonoBehaviour
     {
         interactionCount++;
 
-        if ((stationType == StationType.KitchenTable || stationType == StationType.Cooking) && prepMenuController != null)
+        if (stationType == StationType.KitchenTable || stationType == StationType.Cooking)
         {
-            prepMenuController.Open();
+            EnsurePrepMenuController();
+            if (prepMenuController != null)
+            {
+                prepMenuController.Open();
+            }
         }
 
         if (!logInteractions)
@@ -112,6 +116,16 @@ public class KitchenInteractableStation : MonoBehaviour
         highlightRenderers = includeChildRenderers
             ? GetComponentsInChildren<Renderer>(true)
             : GetComponents<Renderer>();
+    }
+
+    private void EnsurePrepMenuController()
+    {
+        if (prepMenuController != null)
+        {
+            return;
+        }
+
+        prepMenuController = FindAnyObjectByType<KitchenOrderPrepUIController>(FindObjectsInactive.Include);
     }
 
     private void RefreshHighlight()

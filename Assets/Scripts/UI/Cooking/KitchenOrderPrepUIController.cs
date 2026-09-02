@@ -357,6 +357,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             cardsArea = found as RectTransform;
         }
 
+        if (orderCardPrefab == null && orderCardPrefabResourcePath != null)
+        {
+            orderCardPrefab = orderCardPrefabResourcePath.GetComponent<OrderCardView>();
+            if (orderCardPrefab == null)
+            {
+                Debug.LogError("Assigned order card prefab does not have an OrderCardView component.");
+            }
+        }
+
         if (detailPanel == null)
         {
             Transform found = FindDeepChild(transform, "DetailPanel");
