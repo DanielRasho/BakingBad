@@ -13,7 +13,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("Nombres de escena")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
-    [SerializeField] private string kitchenSceneName = "KitchenCell";
+    [SerializeField] private string kitchenSceneName = "MainMap";
 
     [Header("Configuracion")]
     [SerializeField] private bool loopLevelMusic = true;

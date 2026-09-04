@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public class MainMenuController : MonoBehaviour
 {
-    [SerializeField] private string kitchenSceneName = "KitchenCell";
+    [SerializeField] private string kitchenSceneName = "MainMap";
     [SerializeField] private Button startButton;
     [SerializeField] private Button quitButton;
 

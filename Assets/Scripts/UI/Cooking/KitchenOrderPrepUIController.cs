@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
@@ -93,6 +94,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private GameObject menuRoot;
     [SerializeField] private Button closeButton;
     [SerializeField] private PrisonCookPlayerController playerController;
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
 
     [Header("Order Board")]
     [SerializeField] private RectTransform cardsArea;
@@ -111,6 +113,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [Header("Detail Panel")]
     [SerializeField] private GameObject detailPanel;
     [SerializeField] private RectTransform detailDropTarget;
+    [SerializeField] private Button prepareButton;
     [SerializeField] private Text detailTitleText;
     [SerializeField] private Text detailCakeColorText;
     [SerializeField] private Text detailToppingText;
@@ -122,6 +125,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     [Header("Board Summary")]
     [SerializeField] private Text totalMoneyText;
+    [SerializeField] private Text timerText;
 
     [Header("Visuals")]
     [SerializeField] private Color tabIdleColor = new Color(0.97f, 0.96f, 0.93f, 1f);
@@ -156,6 +160,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private CursorLockMode previousCursorLockMode;
     private bool isInitialized;
     private bool playerLockHeld;
+    private int displayedMoney;
+    private int lastDisplayedTimerSeconds = -1;
+    private GameObject resultsMenuRoot;
+    private Text resultsMoneyText;
+    private Text resultsOrdersText;
+    private GameObject mapOverlayRoot;
+    private RectTransform mapContentRoot;
+    private GameObject controlsPopupRoot;
+    private bool controlsPopupShown;
+    private bool controlsPopupLockHeld;
 
     private Text detailStatusText;
 
@@ -228,6 +242,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private void OnDisable()
     {
         SetPlayerInputLocked(false);
+        CloseControlsPopup();
     }
 
     public void Open()
@@ -276,6 +291,197 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         InitializeUi();
     }
 
+    public bool HasOrder(string orderId)
+    {
+        if (string.IsNullOrEmpty(orderId))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < allOrders.Count; i++)
+        {
+            if (allOrders[i] != null && allOrders[i].Data != null && allOrders[i].Data.id == orderId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void AddOrder(OrderDefinition definition)
+    {
+        InitializeUi();
+
+        if (definition == null || string.IsNullOrEmpty(definition.id) || HasOrder(definition.id))
+        {
+            return;
+        }
+
+        RuntimeOrder runtimeOrder = CreateRuntimeOrder(definition, allOrders.Count);
+        allOrders.Add(runtimeOrder);
+
+        if (orderCardPrefab != null && cardsContentRoot != null)
+        {
+            OrderCardView cardView = Instantiate(orderCardPrefab, cardsContentRoot);
+            cardView.name = "OrderCard_" + definition.cellNumber.Replace(" ", string.Empty);
+            ConfigureCardTransform(cardView.GetComponent<RectTransform>(), spawnedOrders.Count);
+            cardView.Initialize(this, runtimeOrder.Data);
+            runtimeOrder.CardView = cardView;
+            spawnedOrders.Add(runtimeOrder);
+        }
+
+        RefreshAllUi();
+    }
+
+    public void RemoveOrder(string orderId)
+    {
+        InitializeUi();
+
+        RuntimeOrder removedOrder = null;
+        for (int i = allOrders.Count - 1; i >= 0; i--)
+        {
+            RuntimeOrder order = allOrders[i];
+            if (order != null && order.Data != null && order.Data.id == orderId)
+            {
+                removedOrder = order;
+                allOrders.RemoveAt(i);
+            }
+        }
+
+        for (int i = spawnedOrders.Count - 1; i >= 0; i--)
+        {
+            RuntimeOrder order = spawnedOrders[i];
+            if (order != null && order.Data != null && order.Data.id == orderId)
+            {
+                if (order.CardView != null)
+                {
+                    DestroyOrderCard(order.CardView);
+                }
+
+                spawnedOrders.RemoveAt(i);
+            }
+        }
+
+        OrderCardView[] sceneCards = FindObjectsByType<OrderCardView>(FindObjectsInactive.Include);
+        for (int i = 0; i < sceneCards.Length; i++)
+        {
+            if (sceneCards[i] != null && sceneCards[i].OrderId == orderId)
+            {
+                DestroyOrderCard(sceneCards[i]);
+            }
+        }
+
+        if (selectedOrder == removedOrder)
+        {
+            selectedOrder = null;
+        }
+
+        if (activePrepOrder == removedOrder)
+        {
+            activePrepOrder = null;
+        }
+
+        RepositionOrderCards();
+        RefreshAllUi();
+    }
+
+    private void DestroyOrderCard(OrderCardView cardView)
+    {
+        if (cardView == null)
+        {
+            return;
+        }
+
+        cardView.gameObject.SetActive(false);
+        Destroy(cardView.gameObject);
+    }
+
+    public void SetMoney(int amount)
+    {
+        displayedMoney = Mathf.Max(0, amount);
+        SyncBoardSummary();
+    }
+
+    public void SetTimerSeconds(float seconds)
+    {
+        if (timerText == null)
+        {
+            EnsureReferences();
+        }
+
+        if (timerText == null)
+        {
+            return;
+        }
+
+        int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, seconds));
+        if (totalSeconds == lastDisplayedTimerSeconds)
+        {
+            return;
+        }
+
+        lastDisplayedTimerSeconds = totalSeconds;
+        int minutes = totalSeconds / 60;
+        int remainder = totalSeconds % 60;
+        timerText.text = minutes.ToString("00") + ":" + remainder.ToString("00");
+    }
+
+    public void ShowDayResults(int money, int deliveredOrderCount)
+    {
+        InitializeUi();
+        Close();
+        if (resultsMenuRoot == null)
+        {
+            BuildResultsMenu();
+        }
+
+        if (resultsMoneyText != null)
+        {
+            resultsMoneyText.text = "Dinero obtenido: Q" + Mathf.Max(0, money);
+        }
+
+        if (resultsOrdersText != null)
+        {
+            resultsOrdersText.text = "Ordenes entregadas: " + Mathf.Max(0, deliveredOrderCount);
+        }
+
+        if (resultsMenuRoot != null)
+        {
+            resultsMenuRoot.SetActive(true);
+        }
+    }
+
+    public void ReturnToMainMenu()
+    {
+        Time.timeScale = 1f;
+        SetPlayerInputLocked(false);
+        CloseControlsPopup();
+        SceneManager.LoadScene(mainMenuSceneName);
+    }
+
+    public void SetMapVisible(bool visible, Vector3 playerPosition, IList<PrisonerInteractable> prisonerViews)
+    {
+        InitializeUi();
+        if (mapOverlayRoot == null)
+        {
+            BuildMapOverlay();
+        }
+
+        if (mapOverlayRoot == null)
+        {
+            return;
+        }
+
+        mapOverlayRoot.SetActive(visible);
+        if (!visible || mapContentRoot == null)
+        {
+            return;
+        }
+
+        PopulateMapOverlay(playerPosition, prisonerViews);
+    }
+
     public void HandleOrderCardClicked(OrderCardView cardView)
     {
         RuntimeOrder order = FindOrderByView(cardView);
@@ -284,12 +490,18 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        SelectAndBeginPrep(order);
+        SetSelectedOrder(order, false);
     }
 
     public void HandleOrderCardDropped(OrderCardView cardView)
     {
-        HandleOrderCardClicked(cardView);
+        RuntimeOrder order = FindOrderByView(cardView);
+        if (!CanSelectOrderFromBoard(order))
+        {
+            return;
+        }
+
+        BeginPrepFromDroppedOrder(order);
     }
 
     public bool IsPointerOverDetailDropTarget(Vector2 screenPosition)
@@ -319,15 +531,60 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         BuildCardsViewport();
         WireButtons();
+        HidePrepareButton();
+        HideRuntimeDetailStatus();
         BuildRuntimeTabContent();
+        BuildResultsMenu();
+        BuildMapOverlay();
+        BuildControlsPopup();
         SetMenuVisible(false);
         SetOrderBoardInteractable(false);
-        LoadOrdersFromJson();
+        allOrders.Clear();
+        spawnedOrders.Clear();
+        selectedOrder = null;
+        activePrepOrder = null;
+        SetMoney(0);
+        SetTimerSeconds(900f);
         SyncBoardSummary();
         SetSelectedOrder(null, false);
         ActivateTab(0, true);
-        StartSpawnRoutine();
         isInitialized = true;
+        ShowControlsPopup();
+    }
+
+    private void ShowControlsPopup()
+    {
+        if (controlsPopupShown || controlsPopupRoot == null)
+        {
+            return;
+        }
+
+        controlsPopupShown = true;
+        controlsPopupRoot.SetActive(true);
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
+        EnsurePlayerController();
+        if (playerController != null && !controlsPopupLockHeld)
+        {
+            playerController.AddInputLock();
+            controlsPopupLockHeld = true;
+        }
+    }
+
+    private void CloseControlsPopup()
+    {
+        if (controlsPopupRoot != null)
+        {
+            controlsPopupRoot.SetActive(false);
+        }
+
+        if (playerController != null && controlsPopupLockHeld)
+        {
+            playerController.RemoveInputLock();
+        }
+
+        controlsPopupLockHeld = false;
     }
 
     private void EnsureReferences()
@@ -381,6 +638,29 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             if (found != null)
             {
                 totalMoneyText = found.GetComponent<Text>();
+            }
+        }
+
+        if (timerText == null)
+        {
+            Transform found = FindDeepChild(transform, "TimeRowText");
+            if (found != null)
+            {
+                timerText = found.GetComponent<Text>();
+            }
+        }
+
+        if (prepareButton == null && detailPanel != null)
+        {
+            Transform found = FindDeepChild(detailPanel.transform, "PrepareButton");
+            if (found == null)
+            {
+                found = FindDeepChild(detailPanel.transform, "Preparar");
+            }
+
+            if (found != null)
+            {
+                prepareButton = found.GetComponent<Button>();
             }
         }
 
@@ -464,7 +744,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private void WireButtons()
     {
         EnsureButtonInputProxy(closeButton);
-
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
@@ -486,17 +765,124 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
     }
 
-    private void BuildRuntimeDetailStatus()
+    private void HidePrepareButton()
     {
-        if (detailPanel == null || detailStatusText != null)
+        if (prepareButton == null)
+        {
+            return;
+        }
+
+        prepareButton.onClick.RemoveAllListeners();
+        prepareButton.gameObject.SetActive(false);
+    }
+
+    private void BeginPrepFromDroppedOrder(RuntimeOrder order)
+    {
+        if (order == null || order.State != OrderRuntimeState.Pending || activePrepOrder != null)
+        {
+            RefreshAllUi();
+            return;
+        }
+
+        selectedOrder = order;
+        activePrepOrder = order;
+        activePrepOrder.State = OrderRuntimeState.ActivePrep;
+        ActivateTab(0, true);
+        RefreshAllUi();
+    }
+
+    private void HideRuntimeDetailStatus()
+    {
+        if (detailStatusText == null)
+        {
+            return;
+        }
+
+        detailStatusText.text = string.Empty;
+        detailStatusText.gameObject.SetActive(false);
+    }
+
+    private void NormalizeDetailPanelLayout()
+    {
+        if (detailPanel == null)
         {
             return;
         }
 
         RectTransform panelRect = detailPanel.GetComponent<RectTransform>();
-        Text status = CreateText("DetailStatusText", panelRect, "Estado: --", 18, FontStyle.Bold, TextAnchor.MiddleLeft);
-        SetRect(status.rectTransform, new Vector2(0.08f, 0f), new Vector2(0.92f, 0f), new Vector2(0f, 31.5f), new Vector2(0f, 24f), new Vector2(0.5f, 0.5f));
-        detailStatusText = status;
+        if (panelRect != null)
+        {
+            Vector2 size = panelRect.sizeDelta;
+            size.y = Mathf.Max(size.y, 560f);
+            size.x = Mathf.Max(size.x, 260f);
+            panelRect.sizeDelta = size;
+        }
+
+        ConfigureDetailText(detailTitleText, 26, FontStyle.Bold, TextAnchor.MiddleCenter);
+        ConfigureDetailText(detailCakeColorText, 18, FontStyle.Normal, TextAnchor.UpperLeft);
+        ConfigureDetailText(detailToppingText, 18, FontStyle.Normal, TextAnchor.UpperLeft);
+        ConfigureDetailText(detailItemLabelText, 22, FontStyle.Bold, TextAnchor.MiddleCenter);
+        ConfigureDetailText(detailPayoutText, 19, FontStyle.Bold, TextAnchor.MiddleLeft);
+        ConfigureDetailText(detailCellText, 19, FontStyle.Bold, TextAnchor.MiddleRight);
+
+        if (detailTitleText != null)
+        {
+            SetRect(detailTitleText.rectTransform, new Vector2(0.08f, 1f), new Vector2(0.92f, 1f), new Vector2(0f, -66f), new Vector2(0f, 78f), new Vector2(0.5f, 0.5f));
+        }
+
+        if (detailCakeColorText != null)
+        {
+            SetRect(detailCakeColorText.rectTransform, new Vector2(0.10f, 1f), new Vector2(0.90f, 1f), new Vector2(0f, -166f), new Vector2(0f, 84f), new Vector2(0.5f, 0.5f));
+        }
+
+        if (detailToppingText != null)
+        {
+            SetRect(detailToppingText.rectTransform, new Vector2(0.10f, 1f), new Vector2(0.90f, 1f), new Vector2(0f, -236f), new Vector2(0f, 34f), new Vector2(0.5f, 0.5f));
+        }
+
+        if (detailItemLabelText != null)
+        {
+            SetRect(detailItemLabelText.rectTransform, new Vector2(0.10f, 0.5f), new Vector2(0.90f, 0.5f), new Vector2(0f, 34f), new Vector2(0f, 72f), new Vector2(0.5f, 0.5f));
+        }
+
+        Transform itemFrame = FindDeepChild(detailPanel.transform, "ItemFrame");
+        if (itemFrame == null)
+        {
+            itemFrame = FindDeepChild(detailPanel.transform, "ItemPlaceholder");
+        }
+
+        RectTransform itemFrameRect = itemFrame as RectTransform;
+        if (itemFrameRect != null)
+        {
+            SetRect(itemFrameRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -48f), new Vector2(112f, 72f), new Vector2(0.5f, 0.5f));
+        }
+
+        if (detailPayoutText != null)
+        {
+            SetRect(detailPayoutText.rectTransform, new Vector2(0.10f, 0f), new Vector2(0.50f, 0f), new Vector2(0f, 62f), new Vector2(0f, 34f), new Vector2(0.5f, 0.5f));
+        }
+
+        if (detailCellText != null)
+        {
+            SetRect(detailCellText.rectTransform, new Vector2(0.50f, 0f), new Vector2(0.90f, 0f), new Vector2(0f, 62f), new Vector2(0f, 34f), new Vector2(0.5f, 0.5f));
+        }
+    }
+
+    private static void ConfigureDetailText(Text text, int fontSize, FontStyle fontStyle, TextAnchor alignment)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        text.fontSize = fontSize;
+        text.fontStyle = fontStyle;
+        text.alignment = alignment;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = Mathf.Max(12, fontSize - 8);
+        text.resizeTextMaxSize = fontSize;
     }
 
     private void BuildRuntimeTabContent()
@@ -726,26 +1112,29 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 continue;
             }
 
-            PlacementShapeType parsedShapeType = ParseShapeType(definition.shapeType);
-            RuntimeOrder runtimeOrder = new RuntimeOrder
-            {
-                RuntimeIndex = i,
-                Data = definition,
-                State = OrderRuntimeState.Pending,
-                RequiredCakeSize = ParseCakeSize(definition.cakeSize),
-                ShapeType = parsedShapeType,
-                BasePayoutValue = definition.basePayout > 0 ? definition.basePayout : ParsePayoutValue(definition.payout),
-                TargetAnchoredPosition = GetPlacementTargetPosition(i),
-                TargetRotationDegrees = GetPlacementTargetRotation(i, parsedShapeType)
-            };
-
-            allOrders.Add(runtimeOrder);
+            allOrders.Add(CreateRuntimeOrder(definition, i));
         }
 
         if (logOrderBoard)
         {
             Debug.Log("Loaded " + allOrders.Count + " orders from JSON.");
         }
+    }
+
+    private RuntimeOrder CreateRuntimeOrder(OrderDefinition definition, int runtimeIndex)
+    {
+        PlacementShapeType parsedShapeType = ParseShapeType(definition != null ? definition.shapeType : null);
+        return new RuntimeOrder
+        {
+            RuntimeIndex = runtimeIndex,
+            Data = definition,
+            State = OrderRuntimeState.Pending,
+            RequiredCakeSize = ParseCakeSize(definition != null ? definition.cakeSize : null),
+            ShapeType = parsedShapeType,
+            BasePayoutValue = definition != null && definition.basePayout > 0 ? definition.basePayout : ParsePayoutValue(definition != null ? definition.payout : null),
+            TargetAnchoredPosition = GetPlacementTargetPosition(runtimeIndex),
+            TargetRotationDegrees = GetPlacementTargetRotation(runtimeIndex, parsedShapeType)
+        };
     }
 
     private void StartSpawnRoutine()
@@ -799,6 +1188,18 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         RefreshCardStates();
+    }
+
+    private void RepositionOrderCards()
+    {
+        for (int i = 0; i < spawnedOrders.Count; i++)
+        {
+            RuntimeOrder order = spawnedOrders[i];
+            if (order != null && order.CardView != null)
+            {
+                ConfigureCardTransform(order.CardView.GetComponent<RectTransform>(), i);
+            }
+        }
     }
 
     private void ConfigureCardTransform(RectTransform cardRect, int orderIndex)
@@ -1115,18 +1516,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             runtimeOrder.CardView.SetCompletedState(isCompleted);
             runtimeOrder.CardView.SetInteractable(isInteractable);
 
-            if (isCompleted)
-            {
-                runtimeOrder.CardView.SetStatus("Lista", true);
-            }
-            else if (isActive)
-            {
-                runtimeOrder.CardView.SetStatus("Activa", true);
-            }
-            else
-            {
-                runtimeOrder.CardView.SetStatus(string.Empty, false);
-            }
+            runtimeOrder.CardView.SetStatus(string.Empty, false);
         }
     }
 
@@ -1161,7 +1551,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (detailItemLabelText != null) detailItemLabelText.text = "Objeto a colocar: " + order.contrabandItem;
         if (detailPayoutText != null) detailPayoutText.text = "Paga: Q" + GetDisplayPayout(selectedOrder);
         if (detailCellText != null) detailCellText.text = "Celda: " + order.cellNumber;
-        if (detailStatusText != null) detailStatusText.text = "Estado: " + GetOrderStatusLabel(selectedOrder);
+        if (detailStatusText != null)
+        {
+            detailStatusText.text = string.Empty;
+            detailStatusText.gameObject.SetActive(false);
+        }
     }
 
     private void StartDragHintPulse()
@@ -1539,13 +1933,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        int total = 0;
-        for (int i = 0; i < allOrders.Count; i++)
-        {
-            total += allOrders[i].BasePayoutValue;
-        }
-
-        totalMoneyText.text = "Q" + total;
+        totalMoneyText.text = "Q" + displayedMoney;
     }
 
     private void EnsurePlayerController()
@@ -2133,6 +2521,184 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         return new Color(0.95f, 0.87f, 0.72f, 1f);
+    }
+
+    private void BuildResultsMenu()
+    {
+        if (resultsMenuRoot != null || rootCanvas == null)
+        {
+            return;
+        }
+
+        Image blocker = CreateImage("DayResultsRoot", rootCanvas.transform, new Color(0f, 0f, 0f, 0.55f));
+        resultsMenuRoot = blocker.gameObject;
+        SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        Image panel = CreateImage("ResultsPanel", blocker.transform, new Color(0.94f, 0.91f, 0.83f, 1f));
+        SetRect(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(560f, 380f), new Vector2(0.5f, 0.5f));
+        Outline outline = panel.gameObject.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        Text title = CreateText("ResultsTitle", panel.transform, "Fin del dia", 36, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -64f), new Vector2(460f, 52f), new Vector2(0.5f, 0.5f));
+
+        resultsMoneyText = CreateText("ResultsMoney", panel.transform, "Dinero obtenido: Q0", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(resultsMoneyText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 42f), new Vector2(480f, 42f), new Vector2(0.5f, 0.5f));
+
+        resultsOrdersText = CreateText("ResultsOrders", panel.transform, "Ordenes entregadas: 0", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(resultsOrdersText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(480f, 42f), new Vector2(0.5f, 0.5f));
+
+        Button mainMenuButton = CreateButton("ResultsMainMenuButton", panel.transform, new Color(1f, 0.88f, 0.60f, 1f));
+        SetRect(mainMenuButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 62f), new Vector2(280f, 58f), new Vector2(0.5f, 0.5f));
+        Text mainMenuLabel = CreateText("Label", mainMenuButton.transform, "Main Menu", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(mainMenuLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        mainMenuButton.onClick.AddListener(ReturnToMainMenu);
+
+        resultsMenuRoot.SetActive(false);
+    }
+
+    private void BuildControlsPopup()
+    {
+        if (controlsPopupRoot != null || rootCanvas == null)
+        {
+            return;
+        }
+
+        Image blocker = CreateImage("ControlsPopupRoot", rootCanvas.transform, new Color(0f, 0f, 0f, 0.50f));
+        controlsPopupRoot = blocker.gameObject;
+        SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        Image panel = CreateImage("ControlsPopupPanel", blocker.transform, new Color(0.94f, 0.91f, 0.83f, 1f));
+        SetRect(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760f, 360f), new Vector2(0.5f, 0.5f));
+        Outline outline = panel.gameObject.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        Text title = CreateText("ControlsPopupTitle", panel.transform, "Controles", 36, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -54f), new Vector2(620f, 52f), new Vector2(0.5f, 0.5f));
+
+        Text body = CreateText(
+            "ControlsPopupBody",
+            panel.transform,
+            "- Utiliza Space para interactuar con tu estacion de cocina, tomar objetos o tomar las ordenes de los prisioneros\n\n- Si tienes las manos ocupadas, puedes utilizar E para interactuar.",
+            24,
+            FontStyle.Bold,
+            TextAnchor.MiddleLeft);
+        body.horizontalOverflow = HorizontalWrapMode.Wrap;
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+        SetRect(body.rectTransform, new Vector2(0.08f, 0.28f), new Vector2(0.92f, 0.76f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        Button closeXButton = CreateButton("ControlsPopupCloseX", panel.transform, new Color(0.97f, 0.96f, 0.93f, 1f));
+        SetRect(closeXButton.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-30f, -30f), new Vector2(42f, 42f), new Vector2(0.5f, 0.5f));
+        Text closeXLabel = CreateText("Label", closeXButton.transform, "X", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(closeXLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        closeXButton.onClick.AddListener(CloseControlsPopup);
+
+        Button continueButton = CreateButton("ControlsPopupContinue", panel.transform, new Color(1f, 0.88f, 0.60f, 1f));
+        SetRect(continueButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), new Vector2(220f, 56f), new Vector2(0.5f, 0.5f));
+        Text continueLabel = CreateText("Label", continueButton.transform, "Entendido", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(continueLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        continueButton.onClick.AddListener(CloseControlsPopup);
+
+        controlsPopupRoot.SetActive(false);
+    }
+
+    private void BuildMapOverlay()
+    {
+        if (mapOverlayRoot != null || rootCanvas == null)
+        {
+            return;
+        }
+
+        Image blocker = CreateImage("MapOverlayRoot", rootCanvas.transform, new Color(0f, 0f, 0f, 0.45f));
+        mapOverlayRoot = blocker.gameObject;
+        SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        Image panel = CreateImage("MapPanel", blocker.transform, new Color(0.94f, 0.91f, 0.83f, 0.98f));
+        SetRect(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760f, 500f), new Vector2(0.5f, 0.5f));
+        Outline outline = panel.gameObject.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        Text title = CreateText("MapTitle", panel.transform, "Mapa", 30, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(300f, 36f), new Vector2(0.5f, 0.5f));
+
+        mapContentRoot = CreateRect("MapContent", panel.transform);
+        SetRect(mapContentRoot, new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.86f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        mapOverlayRoot.SetActive(false);
+    }
+
+    private void PopulateMapOverlay(Vector3 playerPosition, IList<PrisonerInteractable> prisonerViews)
+    {
+        ClearChildren(mapContentRoot);
+
+        if (prisonerViews == null || prisonerViews.Count == 0)
+        {
+            Text empty = CreateText("MapEmpty", mapContentRoot, "No hay celdas registradas.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+            SetRect(empty.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            return;
+        }
+
+        Vector2 min = new Vector2(playerPosition.x, playerPosition.z);
+        Vector2 max = min;
+        for (int i = 0; i < prisonerViews.Count; i++)
+        {
+            if (prisonerViews[i] == null)
+            {
+                continue;
+            }
+
+            Vector2 point = new Vector2(prisonerViews[i].transform.position.x, prisonerViews[i].transform.position.z);
+            min = Vector2.Min(min, point);
+            max = Vector2.Max(max, point);
+        }
+
+        Vector2 size = max - min;
+        size.x = Mathf.Max(size.x, 1f);
+        size.y = Mathf.Max(size.y, 1f);
+
+        for (int i = 0; i < prisonerViews.Count; i++)
+        {
+            PrisonerInteractable prisoner = prisonerViews[i];
+            if (prisoner == null)
+            {
+                continue;
+            }
+
+            Vector2 normalized = new Vector2(
+                (prisoner.transform.position.x - min.x) / size.x,
+                (prisoner.transform.position.z - min.y) / size.y);
+
+            Image marker = CreateImage("MapMarker_" + prisoner.CellId, mapContentRoot, GetMapStateColor(prisoner.MapState));
+            SetRect(marker.rectTransform, normalized, normalized, Vector2.zero, new Vector2(74f, 34f), new Vector2(0.5f, 0.5f));
+            Text label = CreateText("Label", marker.transform, prisoner.CellLabel.Replace("Celda ", string.Empty), 18, FontStyle.Bold, TextAnchor.MiddleCenter);
+            SetRect(label.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        }
+
+        Vector2 playerNormalized = new Vector2(
+            (playerPosition.x - min.x) / size.x,
+            (playerPosition.z - min.y) / size.y);
+        Image playerMarker = CreateImage("MapPlayerMarker", mapContentRoot, new Color(0.2f, 0.45f, 1f, 1f));
+        SetRect(playerMarker.rectTransform, playerNormalized, playerNormalized, Vector2.zero, new Vector2(42f, 42f), new Vector2(0.5f, 0.5f));
+        Text playerLabel = CreateText("Label", playerMarker.transform, "TU", 15, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(playerLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+    }
+
+    private static Color GetMapStateColor(string state)
+    {
+        if (state == "Pedido")
+        {
+            return new Color(1f, 0.86f, 0.36f, 1f);
+        }
+
+        if (state == "Cooldown")
+        {
+            return new Color(0.65f, 0.65f, 0.65f, 1f);
+        }
+
+        return new Color(0.78f, 0.95f, 0.72f, 1f);
     }
 
     private RectTransform CreateRect(string objectName, Transform parent)

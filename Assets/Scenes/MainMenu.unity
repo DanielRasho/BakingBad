@@ -1171,7 +1171,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: befccafdbc716034595a1dc830cd6918, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainMenuController
-  kitchenSceneName: KitchenCell
+  kitchenSceneName: MainMap
   startButton: {fileID: 522357589}
   quitButton: {fileID: 1005365958}
 --- !u!4 &728932369
@@ -1774,7 +1774,7 @@ MonoBehaviour:
   menuMusic: {fileID: 8300000, guid: 03fecf18927589a4c92d0b52cecb5e85, type: 3}
   levelMusic: {fileID: 8300000, guid: 259e918484b5e8a40be5351ced3eb04e, type: 3}
   mainMenuSceneName: MainMenu
-  kitchenSceneName: KitchenCell
+  kitchenSceneName: MainMap
   loopLevelMusic: 1
   musicVolume: 0.7
   fadeDuration: 0.75

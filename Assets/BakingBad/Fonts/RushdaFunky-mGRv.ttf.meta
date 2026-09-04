@@ -3,10 +3,10 @@ guid: fb2ff08458b114e4f9f324c4e04a007d
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
-  fontSize: 16
+  fontSize: 64
   forceTextureCase: -2
   characterSpacing: 0
-  characterPadding: 1
+  characterPadding: 4
   includeFontData: 1
   fontNames:
   - RUSHDA

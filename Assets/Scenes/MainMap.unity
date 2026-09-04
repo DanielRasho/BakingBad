@@ -313,6 +313,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 3245063097419792895, guid: 4ae2e15bd53dc614da112f9115fefbfe, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6201430218659268423, guid: 4ae2e15bd53dc614da112f9115fefbfe, type: 3}
       propertyPath: m_LocalPosition.x
       value: 12.935522
@@ -2622,6 +2626,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 2192009632738333529, guid: 82d030224f9b8f94ebb6bb223dc99091, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7175287562024835708, guid: 82d030224f9b8f94ebb6bb223dc99091, type: 3}
       propertyPath: m_Name
       value: Food_Chicken Sub
@@ -3022,6 +3030,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 3544673265012973784, guid: 2ba561e817e6b8a4e92c134cb584e999, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7256995687948617772, guid: 2ba561e817e6b8a4e92c134cb584e999, type: 3}
       propertyPath: m_LocalPosition.x
       value: 8.113937
@@ -4101,6 +4113,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2226221714914409112, guid: 90dd31c36f3997d46bb4fbbc7884b624, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9196967010630553900, guid: 90dd31c36f3997d46bb4fbbc7884b624, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -7379,6 +7395,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 2252761125374768602, guid: e27740dc0f71e6242933939d6050fd41, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4925099209351665359, guid: e27740dc0f71e6242933939d6050fd41, type: 3}
       propertyPath: m_LocalPosition.x
       value: -3.4063282
@@ -7675,6 +7695,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 863320867736050729, guid: 498f1f2c073f4444cad8be3ce8e3c12d, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -7890,6 +7914,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6527887343750341217, guid: 7dbc5016287a421438d04b83688612bb, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8666288263200158566, guid: 7dbc5016287a421438d04b83688612bb, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -8914,6 +8942,10 @@ PrefabInstance:
     - target: {fileID: 7041683020158330340, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
       propertyPath: m_Name
       value: Food_Chopped Lettuce (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 7657959904922306582, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7706439381206155102, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
       propertyPath: m_LocalPosition.x
@@ -10754,6 +10786,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8059896727181117506, guid: 2b64e55e2ba72cc42804c35f4d30e3b4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -10772,6 +10808,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 2192009632738333529, guid: 82d030224f9b8f94ebb6bb223dc99091, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7175287562024835708, guid: 82d030224f9b8f94ebb6bb223dc99091, type: 3}
       propertyPath: m_Name
       value: Food_Chicken Sub (2)
@@ -11901,6 +11941,10 @@ PrefabInstance:
     - target: {fileID: 5225044024467634966, guid: 4b6dd0d7957ae7e4bb6bde7ddd04ce57, type: 3}
       propertyPath: m_Name
       value: Food_Water Cup (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 8493045856914604813, guid: 4b6dd0d7957ae7e4bb6bde7ddd04ce57, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -13160,6 +13204,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 2252761125374768602, guid: e27740dc0f71e6242933939d6050fd41, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4925099209351665359, guid: e27740dc0f71e6242933939d6050fd41, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.74699974
@@ -13388,6 +13436,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3168254164934688087, guid: ac4ab9cf1a51f024dac20dd5acbedb9b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3772960296827492653, guid: ac4ab9cf1a51f024dac20dd5acbedb9b, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -13941,7 +13993,7 @@ Camera:
     height: 1
   near clip plane: 0.05
   far clip plane: 100
-  field of view: 45
+  field of view: 40
   orthographic: 0
   orthographic size: 3.45
   m_Depth: -1
@@ -15335,6 +15387,7 @@ Transform:
   - {fileID: 1938618101}
   - {fileID: 640783753}
   - {fileID: 1768767733}
+  - {fileID: 1798709205}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &954259665
@@ -16582,6 +16635,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8072288164561333495, guid: 734ba1b51a6460a47bcd7bae305ba996, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -16972,6 +17029,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8059896727181117506, guid: 2b64e55e2ba72cc42804c35f4d30e3b4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -17095,6 +17156,10 @@ PrefabInstance:
     - target: {fileID: 5225044024467634966, guid: 4b6dd0d7957ae7e4bb6bde7ddd04ce57, type: 3}
       propertyPath: m_Name
       value: Food_Water Cup
+      objectReference: {fileID: 0}
+    - target: {fileID: 8493045856914604813, guid: 4b6dd0d7957ae7e4bb6bde7ddd04ce57, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -17362,6 +17427,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 2192009632738333529, guid: 82d030224f9b8f94ebb6bb223dc99091, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7175287562024835708, guid: 82d030224f9b8f94ebb6bb223dc99091, type: 3}
       propertyPath: m_Name
       value: Food_Chicken Sub (1)
@@ -17653,6 +17722,10 @@ PrefabInstance:
     - target: {fileID: 6662072979905104206, guid: 6c7cc25dd8fd22d4cbdce0160cee8b66, type: 3}
       propertyPath: m_Name
       value: Food_Chicken Breast
+      objectReference: {fileID: 0}
+    - target: {fileID: 8883579467331588357, guid: 6c7cc25dd8fd22d4cbdce0160cee8b66, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -18652,6 +18725,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 846581636032892770, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2738341772031687196, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
       propertyPath: m_Name
       value: Food_Broccoli (3)
@@ -19620,6 +19697,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 3544673265012973784, guid: 2ba561e817e6b8a4e92c134cb584e999, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7256995687948617772, guid: 2ba561e817e6b8a4e92c134cb584e999, type: 3}
       propertyPath: m_LocalPosition.x
       value: 11.446347
@@ -20232,6 +20313,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Food_Chopped Lettuce
       objectReference: {fileID: 0}
+    - target: {fileID: 7657959904922306582, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7706439381206155102, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 5.65382
@@ -20464,6 +20549,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 3544673265012973784, guid: 2ba561e817e6b8a4e92c134cb584e999, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7256995687948617772, guid: 2ba561e817e6b8a4e92c134cb584e999, type: 3}
       propertyPath: m_LocalPosition.x
       value: -2.4747295
@@ -20725,6 +20814,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 9196967010630553900, guid: 90dd31c36f3997d46bb4fbbc7884b624, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -20959,6 +21052,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1082901888505508933, guid: ef6e218e81c3a5d4886ddf575ca1b943, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8669897009425669730, guid: ef6e218e81c3a5d4886ddf575ca1b943, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -21207,6 +21304,7 @@ MonoBehaviour:
   interactLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  interactionScanInterval: 0.08
   logInteractions: 1
   carryAnchor: {fileID: 0}
   carryAnchorLocalPosition: {x: 0, y: 0.95, z: -0.28}
@@ -22872,6 +22970,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3559399165965068407, guid: c281362843f585e48832395b63ac1d54, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -23058,6 +23160,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Food_Water Cup (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 8493045856914604813, guid: 4b6dd0d7957ae7e4bb6bde7ddd04ce57, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -23200,6 +23306,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 133530632086065125, guid: 83aad64f3f078194b97e33a1d49fb2b5, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4834058556085182405, guid: 83aad64f3f078194b97e33a1d49fb2b5, type: 3}
       propertyPath: m_LocalPosition.x
       value: 8.975999
@@ -23262,6 +23372,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 846581636032892770, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2738341772031687196, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
       propertyPath: m_Name
       value: Food_Broccoli (1)
@@ -23980,6 +24094,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 3789946980868490485, guid: ca29c74284c40524f8edb533636550f9, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8082482284066526707, guid: ca29c74284c40524f8edb533636550f9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 4.5879993
@@ -25318,6 +25436,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 846581636032892770, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2738341772031687196, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
       propertyPath: m_Name
       value: Food_Broccoli
@@ -26830,6 +26952,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8059896727181117506, guid: 2b64e55e2ba72cc42804c35f4d30e3b4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -27730,6 +27856,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 133530632086065125, guid: 83aad64f3f078194b97e33a1d49fb2b5, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4834058556085182405, guid: 83aad64f3f078194b97e33a1d49fb2b5, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.72599983
@@ -28303,6 +28433,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 846581636032892770, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2738341772031687196, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
       propertyPath: m_Name
       value: Food_Broccoli (2)
@@ -29578,6 +29712,61 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7868370604336980308, guid: 04a1698bff89ce04b8dce8bee7e91e77, type: 3}
   m_PrefabInstance: {fileID: 1787979737}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1798709204
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1798709205}
+  - component: {fileID: 1798709206}
+  m_Layer: 0
+  m_Name: PrisonOrderManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1798709205
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1798709204}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 950891343}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1798709206
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1798709204}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9435e524008ea334094f51f82965a6bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrisonOrderManager
+  ordersJson: {fileID: 4900000, guid: 35d2f2b15d334be9a72e47874bc0ae1e, type: 3}
+  jailCellsRoot: {fileID: 518749480}
+  player: {fileID: 1282066329}
+  orderUi: {fileID: 0}
+  dayDurationSeconds: 600
+  prisonerOrderCooldownSeconds: 15
+  prisonerVisualSource: {fileID: 1282066328}
+  prisonerVisualOffset: {x: 0, y: 0, z: 0}
+  prisonerColliderCenter: {x: 0, y: 0.75, z: 0}
+  prisonerColliderSize: {x: 0.9, y: 1.5, z: 0.9}
+  logOrderFlow: 1
 --- !u!1001 &1814840651
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -29690,6 +29879,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6527887343750341217, guid: 7dbc5016287a421438d04b83688612bb, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8666288263200158566, guid: 7dbc5016287a421438d04b83688612bb, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -32050,6 +32243,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Food_Chicken Breast (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 8883579467331588357, guid: 6c7cc25dd8fd22d4cbdce0160cee8b66, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -32254,6 +32451,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 846581636032892770, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2738341772031687196, guid: 23244ec81d1b60d4eb89d43c5a1606eb, type: 3}
       propertyPath: m_Name
       value: Food_Broccoli (4)
@@ -33926,6 +34127,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 9196967010630553900, guid: 90dd31c36f3997d46bb4fbbc7884b624, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -34298,6 +34503,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Food_Chicken Breast (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 8883579467331588357, guid: 6c7cc25dd8fd22d4cbdce0160cee8b66, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -34316,6 +34525,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1686491343}
     m_Modifications:
+    - target: {fileID: 3789946980868490485, guid: ca29c74284c40524f8edb533636550f9, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8082482284066526707, guid: ca29c74284c40524f8edb533636550f9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 4.5879993
@@ -35461,6 +35674,10 @@ PrefabInstance:
     - target: {fileID: 7041683020158330340, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
       propertyPath: m_Name
       value: Food_Chopped Lettuce (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 7657959904922306582, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7706439381206155102, guid: a39885acf60cabb49ae5f1ed9464e7b9, type: 3}
       propertyPath: m_LocalPosition.x

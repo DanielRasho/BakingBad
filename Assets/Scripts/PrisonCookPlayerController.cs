@@ -33,6 +33,7 @@ public class PrisonCookPlayerController : MonoBehaviour
     [SerializeField] private float interactHeight = 0.7f;
     [SerializeField] private float interactRadius = 0.45f;
     [SerializeField] private LayerMask interactLayers = ~0;
+    [SerializeField] private float interactionScanInterval = 0.08f;
     [SerializeField] private bool logInteractions = true;
 
     [Header("Carry")]
@@ -50,13 +51,17 @@ public class PrisonCookPlayerController : MonoBehaviour
     private CharacterController controller;
     private CardinalDirection currentFacing;
     private KitchenInteractableStation currentInteractable;
+    private PrisonerInteractable currentPrisoner;
     private CakePickup currentCakePickup;
     private CakePickup heldCake;
     private Vector3 dashDirection;
     private float dashTimeRemaining;
     private float dashCooldownRemaining;
+    private float nextInteractionScanTime;
     private float verticalVelocity;
     private int inputLockCount;
+    private readonly Collider[] overlapBuffer = new Collider[96];
+    private readonly RaycastHit[] movementCastBuffer = new RaycastHit[128];
 
     private const float CollisionSkin = 0.03f;
     private const float VisualCollisionPadding = 0.07f;
@@ -69,6 +74,11 @@ public class PrisonCookPlayerController : MonoBehaviour
     public bool HasHeldCake
     {
         get { return heldCake != null; }
+    }
+
+    public string HeldCakeOrderId
+    {
+        get { return heldCake != null ? heldCake.OrderId : string.Empty; }
     }
 
     public void AddInputLock()
@@ -124,15 +134,14 @@ public class PrisonCookPlayerController : MonoBehaviour
                 ApplyFacingRotation();
             }
 
-            currentCakePickup = FindCurrentCakePickup();
-            SetCurrentInteractable(FindCurrentInteractable());
+            RefreshInteractionTargets(false);
             return;
         }
 
         if (WasDropPressedThisFrame() && heldCake != null)
         {
             DropHeldCake();
-            SetCurrentInteractable(FindCurrentInteractable());
+            RefreshInteractionTargets(true);
             return;
         }
 
@@ -176,13 +185,14 @@ public class PrisonCookPlayerController : MonoBehaviour
             ApplyFacingRotation();
         }
 
-        currentCakePickup = FindCurrentCakePickup();
-        SetCurrentInteractable(FindCurrentInteractable());
-
         if (WasInteractPressedThisFrame())
         {
+            RefreshInteractionTargets(true);
             TryInteract();
+            return;
         }
+
+        RefreshInteractionTargets(false);
     }
 
     private Vector2 ReadMovementInput()
@@ -358,20 +368,21 @@ public class PrisonCookPlayerController : MonoBehaviour
         float distance = desiredMove.magnitude;
         GetControllerCapsule(out Vector3 bottom, out Vector3 top, out float radius);
 
-        RaycastHit[] hits = Physics.CapsuleCastAll(
+        int hitCount = Physics.CapsuleCastNonAlloc(
             bottom,
             top,
             radius,
             direction,
+            movementCastBuffer,
             distance + CollisionSkin,
             ~0,
             QueryTriggerInteraction.Ignore);
 
         float allowedDistance = distance;
 
-        for (int i = 0; i < hits.Length; i++)
+        for (int i = 0; i < hitCount; i++)
         {
-            RaycastHit hit = hits[i];
+            RaycastHit hit = movementCastBuffer[i];
             if (hit.collider == null || hit.transform == transform || hit.transform.IsChildOf(transform))
             {
                 continue;
@@ -470,6 +481,20 @@ public class PrisonCookPlayerController : MonoBehaviour
         return true;
     }
 
+    public bool TryDeliverHeldCake(string orderId, out CakePickup deliveredCake)
+    {
+        deliveredCake = null;
+        if (heldCake == null || string.IsNullOrEmpty(orderId) || heldCake.OrderId != orderId)
+        {
+            return false;
+        }
+
+        deliveredCake = heldCake;
+        heldCake = null;
+        deliveredCake.transform.SetParent(null, true);
+        return true;
+    }
+
     public void DropHeldCake()
     {
         if (heldCake == null)
@@ -492,6 +517,22 @@ public class PrisonCookPlayerController : MonoBehaviour
 
     private void TryInteract()
     {
+        PrisonerInteractable prisonerTarget = currentPrisoner != null
+            ? currentPrisoner
+            : FindCurrentPrisoner();
+
+        if (prisonerTarget != null)
+        {
+            prisonerTarget.Interact(this);
+
+            if (logInteractions)
+            {
+                Debug.Log("Interact: " + prisonerTarget.CellLabel);
+            }
+
+            return;
+        }
+
         if (heldCake == null)
         {
             CakePickup pickupTarget = currentCakePickup != null
@@ -534,16 +575,31 @@ public class PrisonCookPlayerController : MonoBehaviour
         }
     }
 
+    private void RefreshInteractionTargets(bool force)
+    {
+        if (!force && Time.unscaledTime < nextInteractionScanTime)
+        {
+            return;
+        }
+
+        float interval = Mathf.Max(0.02f, interactionScanInterval);
+        nextInteractionScanTime = Time.unscaledTime + interval;
+
+        currentCakePickup = FindCurrentCakePickup();
+        currentPrisoner = FindCurrentPrisoner();
+        SetCurrentInteractable(FindCurrentInteractable());
+    }
+
     private KitchenInteractableStation FindCurrentInteractable()
     {
         Vector3 center = GetInteractCenter(GetFacingVector());
-        Collider[] hits = Physics.OverlapSphere(center, interactRadius, interactLayers, QueryTriggerInteraction.Collide);
+        int hitCount = Physics.OverlapSphereNonAlloc(center, interactRadius, overlapBuffer, interactLayers, QueryTriggerInteraction.Collide);
         KitchenInteractableStation closestStation = null;
         float closestDistance = float.MaxValue;
 
-        for (int i = 0; i < hits.Length; i++)
+        for (int i = 0; i < hitCount; i++)
         {
-            Collider hit = hits[i];
+            Collider hit = overlapBuffer[i];
             if (hit == null || hit.transform == transform || hit.transform.IsChildOf(transform))
             {
                 continue;
@@ -565,6 +621,39 @@ public class PrisonCookPlayerController : MonoBehaviour
         }
 
         return closestStation;
+    }
+
+    private PrisonerInteractable FindCurrentPrisoner()
+    {
+        Vector3 center = GetInteractCenter(GetFacingVector());
+        int hitCount = Physics.OverlapSphereNonAlloc(center, interactRadius, overlapBuffer, interactLayers, QueryTriggerInteraction.Collide);
+        PrisonerInteractable closestPrisoner = null;
+        float closestDistance = float.MaxValue;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            Collider hit = overlapBuffer[i];
+            if (hit == null || hit.transform == transform || hit.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            PrisonerInteractable prisoner = hit.GetComponentInParent<PrisonerInteractable>();
+            if (prisoner == null)
+            {
+                continue;
+            }
+
+            Vector3 nearestPoint = hit.bounds.ClosestPoint(center);
+            float distance = (nearestPoint - center).sqrMagnitude;
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestPrisoner = prisoner;
+            }
+        }
+
+        return closestPrisoner;
     }
 
     private CakePickup FindCurrentCakePickup()
@@ -617,13 +706,13 @@ public class PrisonCookPlayerController : MonoBehaviour
 
     private CakePickup FindClosestCakePickupAt(Vector3 center, float radius)
     {
-        Collider[] hits = Physics.OverlapSphere(center, radius, pickupLayers, QueryTriggerInteraction.Collide);
+        int hitCount = Physics.OverlapSphereNonAlloc(center, radius, overlapBuffer, pickupLayers, QueryTriggerInteraction.Collide);
         CakePickup closestPickup = null;
         float closestDistance = float.MaxValue;
 
-        for (int i = 0; i < hits.Length; i++)
+        for (int i = 0; i < hitCount; i++)
         {
-            Collider hit = hits[i];
+            Collider hit = overlapBuffer[i];
             if (hit == null || hit.transform == transform || hit.transform.IsChildOf(transform))
             {
                 continue;

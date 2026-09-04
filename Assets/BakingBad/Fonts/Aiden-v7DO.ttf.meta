@@ -3,10 +3,10 @@ guid: 7310ea39a9b30784f9b4b3baa423b7be
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
-  fontSize: 16
+  fontSize: 64
   forceTextureCase: -2
   characterSpacing: 0
-  characterPadding: 1
+  characterPadding: 4
   includeFontData: 1
   fontNames:
   - Aiden

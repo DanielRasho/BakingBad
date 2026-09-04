@@ -43,8 +43,14 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
     private bool isGeometryHovered;
     private bool isPressHeld;
     private bool startedPressOnCard;
+    private string orderId;
     private Vector2 pressStartScreenPosition;
     private const float DragThresholdPixels = 8f;
+
+    public string OrderId
+    {
+        get { return orderId; }
+    }
 
     private void Awake()
     {
@@ -154,6 +160,7 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
     public void Initialize(KitchenOrderPrepUIController owner, KitchenOrderPrepUIController.OrderDefinition order)
     {
         controller = owner;
+        orderId = order != null ? order.id : string.Empty;
 
         if (cellText != null)
         {
