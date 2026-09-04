@@ -92,7 +92,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [Header("Root")]
     [SerializeField] private GameObject menuRoot;
     [SerializeField] private Button closeButton;
-    [SerializeField] private Button prepareButton;
     [SerializeField] private PrisonCookPlayerController playerController;
 
     [Header("Order Board")]
@@ -185,11 +184,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Text[] toppingOptionLabelTexts;
     private Text toppingFeedbackText;
 
-    private const float OrderCardWidth = 86f;
-    private const float OrderCardHeight = 114f;
+    private const float OrderCardWidth = 136f;
+    private const float OrderCardHeight = 176f;
     private const float OrderCardSpacing = 14f;
     private const float OrderCardStartX = 18f;
-    private const float OrderCardStartY = -8f;
+    private const float OrderCardStartY = 0f;
     private const float PlacementRotationStep = 15f;
     private const float PlacementDistanceThreshold = 28f;
     private const float PlacementAngleThreshold = 18f;
@@ -282,18 +281,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        SetSelectedOrder(order, activePrepOrder != null && order == activePrepOrder);
+        SelectAndBeginPrep(order);
     }
 
     public void HandleOrderCardDropped(OrderCardView cardView)
     {
-        RuntimeOrder order = FindOrderByView(cardView);
-        if (!CanSelectOrderFromBoard(order))
-        {
-            return;
-        }
-
-        SetSelectedOrder(order, activePrepOrder != null && order == activePrepOrder);
+        HandleOrderCardClicked(cardView);
     }
 
     public bool IsPointerOverDetailDropTarget(Vector2 screenPosition)
@@ -324,7 +317,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         BuildCardsViewport();
         WireButtons();
         BuildRuntimeTabContent();
-        BuildRuntimeDetailStatus();
         SetMenuVisible(false);
         SetOrderBoardInteractable(false);
         LoadOrdersFromJson();
@@ -455,18 +447,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private void WireButtons()
     {
         EnsureButtonInputProxy(closeButton);
-        EnsureButtonInputProxy(prepareButton);
 
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(Close);
-        }
-
-        if (prepareButton != null)
-        {
-            prepareButton.onClick.RemoveAllListeners();
-            prepareButton.onClick.AddListener(PrepareSelectedOrder);
         }
 
         for (int i = 0; i < tabButtons.Length; i++)
@@ -493,7 +478,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         RectTransform panelRect = detailPanel.GetComponent<RectTransform>();
         Text status = CreateText("DetailStatusText", panelRect, "Estado: --", 18, FontStyle.Bold, TextAnchor.MiddleLeft);
-        SetRect(status.rectTransform, new Vector2(0.08f, 0f), new Vector2(0.92f, 0f), new Vector2(0f, 96f), new Vector2(0f, 24f), new Vector2(0.5f, 0.5f));
+        SetRect(status.rectTransform, new Vector2(0.08f, 0f), new Vector2(0.92f, 0f), new Vector2(0f, 31.5f), new Vector2(0f, 24f), new Vector2(0.5f, 0.5f));
         detailStatusText = status;
     }
 
@@ -858,22 +843,26 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return true;
     }
 
-    private void PrepareSelectedOrder()
+    private void SelectAndBeginPrep(RuntimeOrder order)
     {
-        if (selectedOrder == null || selectedOrder.State != OrderRuntimeState.Pending)
+        bool wasAlreadyActive = order != null && order == activePrepOrder;
+        selectedOrder = order;
+
+        if (order != null && order.State == OrderRuntimeState.Pending && activePrepOrder == null)
         {
+            activePrepOrder = order;
+            activePrepOrder.State = OrderRuntimeState.ActivePrep;
+            RefreshAllUi();
+            ActivateTab(0, true);
             return;
         }
 
-        if (activePrepOrder != null && activePrepOrder != selectedOrder)
-        {
-            return;
-        }
-
-        activePrepOrder = selectedOrder;
-        activePrepOrder.State = OrderRuntimeState.ActivePrep;
         RefreshAllUi();
-        ActivateTab(0, true);
+
+        if (wasAlreadyActive)
+        {
+            ActivateTab(GetFirstAvailableTabIndex(activePrepOrder), true);
+        }
     }
 
     private void HandleCakeSizeSelected(CakeSizeOption selectedSize)
@@ -1129,14 +1118,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 runtimeOrder.CardView.SetStatus(string.Empty, false);
             }
         }
-
-        if (prepareButton != null)
-        {
-            bool canPrepare = selectedOrder != null
-                && selectedOrder.State == OrderRuntimeState.Pending
-                && (activePrepOrder == null || activePrepOrder == selectedOrder);
-            prepareButton.interactable = canPrepare;
-        }
     }
 
     private void RefreshDetailPanel()
@@ -1214,7 +1195,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         if (activePrepOrder == null)
         {
-            sizeFeedbackText.text = "Bloqueado hasta elegir una orden y pulsar Preparar.";
+            sizeFeedbackText.text = "Bloqueado hasta seleccionar una orden.";
             return;
         }
 
