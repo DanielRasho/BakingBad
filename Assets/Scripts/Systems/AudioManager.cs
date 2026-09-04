@@ -1,9 +1,9 @@
 using UnityEngine;
 using System.Collections;
 
-public class AudioManager : MonoBehaviour
+public class SystemAudioManager : MonoBehaviour
 {
-    public static AudioManager Instance { get; private set; }
+    public static SystemAudioManager Instance { get; private set; }
 
     [Header("Audio Sources")]
     [SerializeField] private AudioSource musicSourceA;

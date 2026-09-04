@@ -382,10 +382,31 @@ public class PrisonCookPlayerController : MonoBehaviour
                 continue;
             }
 
+            if (IsWalkableFloorEdge(hit.collider))
+            {
+                continue;
+            }
+
             allowedDistance = Mathf.Min(allowedDistance, Mathf.Max(0f, hit.distance - CollisionSkin));
         }
 
         return direction * allowedDistance;
+    }
+
+    private bool IsWalkableFloorEdge(Collider hitCollider)
+    {
+        if (hitCollider == null || controller == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = hitCollider.bounds;
+        float stepHeight = Mathf.Max(controller.stepOffset, 0.2f);
+        float floorTopLimit = transform.position.y + stepHeight + 0.05f;
+        bool isThinFloor = bounds.size.y <= 0.35f;
+        bool isLowEnoughToStepOn = bounds.max.y <= floorTopLimit;
+
+        return isThinFloor && isLowEnoughToStepOn;
     }
 
     private void GetControllerCapsule(out Vector3 bottom, out Vector3 top, out float radius)
