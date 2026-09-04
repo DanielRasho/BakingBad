@@ -117,6 +117,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private Text detailItemLabelText;
     [SerializeField] private Text detailPayoutText;
     [SerializeField] private Text detailCellText;
+    [SerializeField] private GameObject dragHintOverlay;
+    [SerializeField] private RectTransform dragHintPointer;
 
     [Header("Board Summary")]
     [SerializeField] private Text totalMoneyText;
@@ -148,6 +150,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private RuntimeOrder selectedOrder;
     private RuntimeOrder activePrepOrder;
     private Coroutine spawnRoutine;
+    private Coroutine dragHintPulseRoutine;
     private int activeTabIndex;
     private bool previousCursorVisible;
     private CursorLockMode previousCursorLockMode;
@@ -249,7 +252,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             RuntimeOrder nextOrder = selectedOrder != null && selectedOrder.State == OrderRuntimeState.Pending
                 ? selectedOrder
-                : GetFirstPendingSpawnedOrder();
+                : null;
             SetSelectedOrder(nextOrder, false);
             ActivateTab(0, true);
         }
@@ -379,6 +382,20 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             {
                 totalMoneyText = found.GetComponent<Text>();
             }
+        }
+
+        if (dragHintOverlay == null)
+        {
+            Transform found = FindDeepChild(transform, "DragHintOverlay");
+            if (found != null)
+            {
+                dragHintOverlay = found.gameObject;
+            }
+        }
+
+        if (dragHintPointer == null && dragHintOverlay != null)
+        {
+            dragHintPointer = FindDeepChild(dragHintOverlay.transform, "DragHintPointer") as RectTransform;
         }
     }
 
@@ -782,10 +799,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         RefreshCardStates();
-        if (selectedOrder == null && IsOpen && activePrepOrder == null)
-        {
-            SetSelectedOrder(runtimeOrder, false);
-        }
     }
 
     private void ConfigureCardTransform(RectTransform cardRect, int orderIndex)
@@ -1054,13 +1067,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         activePrepOrder.CakeGenerated = true;
         activePrepOrder.State = OrderRuntimeState.Completed;
         activePrepOrder.FinalPayout = CalculateFinalPayout(activePrepOrder);
-        toppingFeedbackText.text = "Pastel terminado. El jugador ahora lo lleva en las manos.";
 
-        RuntimeOrder completedOrder = activePrepOrder;
         activePrepOrder = null;
-        selectedOrder = completedOrder;
-        RefreshAllUi();
-        ActivateTab(0, true);
+        selectedOrder = null;
+        Close();
     }
 
     private void SetSelectedOrder(RuntimeOrder order, bool forceUnlockedTabs)
@@ -1129,15 +1139,20 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         if (selectedOrder == null)
         {
-            if (detailTitleText != null) detailTitleText.text = "Arrastra una orden aqui";
-            if (detailCakeColorText != null) detailCakeColorText.text = "Color de pastel: --\nTamano: --";
-            if (detailToppingText != null) detailToppingText.text = "Topping: --";
-            if (detailItemLabelText != null) detailItemLabelText.text = "Objeto a colocar: --";
-            if (detailPayoutText != null) detailPayoutText.text = "Paga: Q0";
-            if (detailCellText != null) detailCellText.text = "Celda: --";
-            if (detailStatusText != null) detailStatusText.text = "Estado: --";
+            if (detailTitleText != null) detailTitleText.text = string.Empty;
+            if (detailCakeColorText != null) detailCakeColorText.text = string.Empty;
+            if (detailToppingText != null) detailToppingText.text = string.Empty;
+            if (detailItemLabelText != null) detailItemLabelText.text = string.Empty;
+            if (detailPayoutText != null) detailPayoutText.text = string.Empty;
+            if (detailCellText != null) detailCellText.text = string.Empty;
+            if (detailStatusText != null) detailStatusText.text = string.Empty;
+            if (dragHintOverlay != null) dragHintOverlay.SetActive(true);
+            StartDragHintPulse();
             return;
         }
+
+        StopDragHintPulse();
+        if (dragHintOverlay != null) dragHintOverlay.SetActive(false);
 
         OrderDefinition order = selectedOrder.Data;
         if (detailTitleText != null) detailTitleText.text = order.orderTitle;
@@ -1147,6 +1162,46 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (detailPayoutText != null) detailPayoutText.text = "Paga: Q" + GetDisplayPayout(selectedOrder);
         if (detailCellText != null) detailCellText.text = "Celda: " + order.cellNumber;
         if (detailStatusText != null) detailStatusText.text = "Estado: " + GetOrderStatusLabel(selectedOrder);
+    }
+
+    private void StartDragHintPulse()
+    {
+        if (dragHintPulseRoutine != null || dragHintPointer == null || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        dragHintPulseRoutine = StartCoroutine(DragHintPulseRoutine());
+    }
+
+    private void StopDragHintPulse()
+    {
+        if (dragHintPulseRoutine != null)
+        {
+            StopCoroutine(dragHintPulseRoutine);
+            dragHintPulseRoutine = null;
+        }
+
+        if (dragHintPointer != null)
+        {
+            dragHintPointer.localScale = Vector3.one;
+        }
+    }
+
+    private IEnumerator DragHintPulseRoutine()
+    {
+        RectTransform pointerRect = dragHintPointer;
+        const float pulseSpeed = 2.2f;
+        const float minScale = 0.85f;
+        const float maxScale = 1.15f;
+
+        while (true)
+        {
+            float t = (Mathf.Sin(Time.unscaledTime * pulseSpeed) + 1f) * 0.5f;
+            float scale = Mathf.Lerp(minScale, maxScale, t);
+            pointerRect.localScale = new Vector3(scale, scale, 1f);
+            yield return null;
+        }
     }
 
     private void RefreshTabAvailability()
@@ -1748,19 +1803,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         fillRect.anchorMax = new Vector2(Mathf.Clamp01(normalized), 1f);
         fillRect.offsetMin = Vector2.zero;
         fillRect.offsetMax = Vector2.zero;
-    }
-
-    private RuntimeOrder GetFirstPendingSpawnedOrder()
-    {
-        for (int i = 0; i < spawnedOrders.Count; i++)
-        {
-            if (spawnedOrders[i].State == OrderRuntimeState.Pending)
-            {
-                return spawnedOrders[i];
-            }
-        }
-
-        return null;
     }
 
     private static CakeSizeOption ParseCakeSize(string value)
