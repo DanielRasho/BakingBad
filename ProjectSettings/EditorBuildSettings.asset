@@ -6,14 +6,17 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/bootstrap.unity
+    guid: f92679c030aca354189e755aa10c5a78
+  - enabled: 1
     path: Assets/Scenes/MainMenu.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/Scenes/KitchenCell.unity
-    guid: bbad0000000000000000000000000201
-  - enabled: 1
     path: Assets/Scenes/KitchenUI.unity
     guid: fe59fcb293b205f4bac2bbe02ec1d935
+  - enabled: 1
+    path: Assets/Scenes/MainMap.unity
+    guid: 227b5dbbe8c9215418a3ac741a83e7a4
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
