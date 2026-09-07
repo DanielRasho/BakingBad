@@ -21033,7 +21033,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3f4bc1f673a10044a639bb76b3a4798, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrisonCookPlayerController
-  moveSpeed: 3.4
+  moveSpeed: 5
   movementCamera: {fileID: 855947661}
   startingDirection: 1
   rotateToCardinalDirection: 0
@@ -24333,6 +24333,7 @@ GameObject:
   - component: {fileID: 1461371446}
   - component: {fileID: 1461371443}
   - component: {fileID: 1461371442}
+  - component: {fileID: 1461371447}
   m_Layer: 0
   m_Name: Sprite
   m_TagString: Player
@@ -24437,6 +24438,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1282066328}
   m_LocalEulerAnglesHint: {x: 45, y: 0, z: 0}
+--- !u!114 &1461371447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461371441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 759da556ee73be343b76460c07849b35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimations
 --- !u!1001 &1462656343
 PrefabInstance:
   m_ObjectHideFlags: 0

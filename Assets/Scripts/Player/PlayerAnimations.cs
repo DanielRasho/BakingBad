@@ -5,17 +5,17 @@ using UnityEngine.InputSystem;
 
 public class PlayerAnimations : MonoBehaviour
 {
-
-    [SerializeField] private Animator animator;
-    [Header("Enemy Collision")]
-    [Tooltip("Layer assigned to enemies.")]
-    [SerializeField] private LayerMask enemyLayer;
-
+    private Animator animator;
     private Vector2 moveInput;
     private Vector2 lastMoveDirection = Vector2.right;
     
     private bool canDash = true;
-    private bool isDashing = false;
+    private bool isDashing = falsed
+
+    private void Awake()
+    {
+       animator = GetComponent<Animator>(); 
+    }
 
     void Start()
     {
