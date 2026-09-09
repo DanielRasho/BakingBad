@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -31,6 +32,8 @@ public class PrisonOrderManager : MonoBehaviour
     [SerializeField] private Vector3 prisonerVisualOffset = Vector3.zero;
     [SerializeField] private Vector3 prisonerColliderCenter = new Vector3(0f, 0.75f, 0f);
     [SerializeField] private Vector3 prisonerColliderSize = new Vector3(0.9f, 1.5f, 0.9f);
+    [SerializeField] private GameObject prisonerPrefab;
+    [SerializeField] private List<Sprite> prisionerSprites = new List<Sprite>();
 
     [Header("Debug")]
     [SerializeField] private bool logOrderFlow = true;
@@ -358,49 +361,18 @@ public class PrisonOrderManager : MonoBehaviour
                 continue;
             }
 
-            GameObject prisonerObject = new GameObject("Prisoner_" + cellPoint.name);
-            prisonerObject.transform.SetParent(cellPoint, false);
-            prisonerObject.transform.localPosition = Vector3.zero;
+            GameObject prisonerObject = Instantiate(prisonerPrefab, cellPoint, false);
+            prisonerObject.name = "Prisoner_" + cellPoint.name;
+            prisonerObject.transform.localPosition = new Vector3(0f, 0.72f, 0f);
             prisonerObject.transform.localRotation = Quaternion.identity;
 
-            CopyPrisonerVisual(prisonerObject.transform);
+            var spriteRenderer = prisonerObject.GetComponent<SpriteRenderer>();
+            spriteRenderer.sprite = prisionerSprites[Random.Range(0, prisionerSprites.Count)];
 
             BoxCollider collider = prisonerObject.AddComponent<BoxCollider>();
             collider.isTrigger = true;
             collider.center = prisonerColliderCenter;
             collider.size = prisonerColliderSize;
-
-            PrisonerInteractable prisoner = prisonerObject.AddComponent<PrisonerInteractable>();
-            prisoner.Initialize(this, cellPoint.name, GetCellLabel(cellPoint.name));
-            prisoners.Add(prisoner);
-        }
-    }
-
-    private void CopyPrisonerVisual(Transform prisonerRoot)
-    {
-        Transform source = prisonerVisualSource != null
-            ? prisonerVisualSource
-            : player != null ? player.transform : null;
-
-        if (source == null)
-        {
-            GameObject placeholder = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            placeholder.name = "PrisonerPlaceholder";
-            placeholder.transform.SetParent(prisonerRoot, false);
-            placeholder.transform.localPosition = prisonerVisualOffset + new Vector3(0f, 0.75f, 0f);
-            placeholder.transform.localScale = new Vector3(0.55f, 0.75f, 0.55f);
-            Destroy(placeholder.GetComponent<Collider>());
-            return;
-        }
-
-        for (int i = 0; i < source.childCount; i++)
-        {
-            Transform visualChild = source.GetChild(i);
-            GameObject clone = Instantiate(visualChild.gameObject, prisonerRoot);
-            clone.name = visualChild.name;
-            clone.transform.localPosition = visualChild.localPosition + prisonerVisualOffset;
-            clone.transform.localRotation = visualChild.localRotation;
-            clone.transform.localScale = visualChild.localScale;
         }
     }
 
