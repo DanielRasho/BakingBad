@@ -9,8 +9,8 @@ public class PlayerAnimations : MonoBehaviour
     private Vector2 moveInput;
     private Vector2 lastMoveDirection = Vector2.right;
     
-    private bool canDash = true;
-    private bool isDashing = falsed
+    // private bool isWalking = false;
+    // private bool isDashing = false;
 
     private void Awake()
     {

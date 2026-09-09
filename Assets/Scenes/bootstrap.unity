@@ -541,6 +541,7 @@ GameObject:
   - component: {fileID: 1958387305}
   - component: {fileID: 1958387304}
   - component: {fileID: 1958387303}
+  - component: {fileID: 1958387306}
   m_Layer: 0
   m_Name: AudioManager
   m_TagString: Untagged
@@ -560,15 +561,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6777f38c448718f4d87eb91761f6ea44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
-  menuMusic: {fileID: 0}
-  levelMusic: {fileID: 0}
+  menuMusic: {fileID: 8300000, guid: 03fecf18927589a4c92d0b52cecb5e85, type: 3}
+  levelMusic: {fileID: 8300000, guid: 259e918484b5e8a40be5351ced3eb04e, type: 3}
   mainMenuSceneName: MainMenu
   kitchenSceneName: MainMap
   loopLevelMusic: 1
   musicVolume: 0.7
   fadeDuration: 0.75
-  menuButtonClickSound: {fileID: 0}
-  otherButtonClickSound: {fileID: 0}
+  menuButtonClickSound: {fileID: 8300000, guid: 7c635c63b09cd894baedda3d845dcc1b, type: 3}
+  otherButtonClickSound: {fileID: 8300000, guid: 8e0ffd7876ee11e448f3c3af7d4e7696, type: 3}
   sfxVolume: 1
 --- !u!82 &1958387304
 AudioSource:
@@ -682,6 +683,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &1958387306
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958387302}
+  m_Enabled: 1
 --- !u!1 &2019880738
 GameObject:
   m_ObjectHideFlags: 0
