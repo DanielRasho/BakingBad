@@ -1,16 +1,44 @@
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.Events;
 
-public class CursorChange : MonoBehaviour
+[RequireComponent(typeof(RectTransform))]
+public class CursorChange : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    [Header("Hover Events")]
+    [SerializeField] private CursorManager.CursorType cursorOnHover = CursorManager.CursorType.Pointer;
+
+    private bool isOnHover = false;
+    private CursorManager.CursorType previousCursor = CursorManager.CursorType.Default;
+
+    public void OnPointerEnter(PointerEventData eventData)
     {
-        
+        Debug.Log("UWUWUWUWU");
+        previousCursor = CursorManager.Instance.GetCursorType();
+        CursorManager.Instance.SetCursor(cursorOnHover);
+        isOnHover = true;
     }
 
-    // Update is called once per frame
-    void Update()
+    public void OnPointerExit(PointerEventData eventData)
     {
-        
+        CursorManager.Instance.SetCursor(previousCursor);
+        isOnHover = false;
+    }
+
+    public void OnDestroy()
+    {
+        if (isOnHover)
+        {
+            CursorManager.Instance.SetCursor(previousCursor);
+        }
+    }
+    
+    public void OnDisable()
+    {
+        if (isOnHover)
+        {
+            CursorManager.Instance.SetCursor(previousCursor);
+        }
     }
 }

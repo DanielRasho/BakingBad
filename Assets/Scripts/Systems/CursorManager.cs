@@ -4,9 +4,12 @@ using System;
 
 public class CursorManager : MonoBehaviour
 {
-    [Header("Cursor Types")]
-    [SerializeField] private CursorData defaultCursor;
+    [Header("Cursor Types")] [SerializeField]
+    private CursorData defaultCursor;
+
     [SerializeField] private CursorData pointerCursor;
+
+    private CursorType currentType;
 
     public static CursorManager Instance { get; private set; }
 
@@ -57,9 +60,15 @@ public class CursorManager : MonoBehaviour
             cursorData.hotspot,
             cursorData.cursorMode
         );
+        currentType = type;
     }
 
-    private CursorData GetCursorData(CursorType type)
+    public CursorType GetCursorType()
+    {
+        return this.currentType;
+    }
+
+private CursorData GetCursorData(CursorType type)
     {
         return type switch
         {
