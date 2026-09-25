@@ -23384,7 +23384,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrisonCookPlayerController
   runSpeed: 5
-  sneakSpeed: 1.5
+  sneakSpeed: 1
   movementCamera: {fileID: 855947661}
   startingDirection: 1
   rotateToCardinalDirection: 0
