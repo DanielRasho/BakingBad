@@ -29,6 +29,11 @@ public class PrisonOrderManager : MonoBehaviour
     [Tooltip("Orders taken but not yet cooked; more would overflow the order board.")]
     [SerializeField] private int maxQueuedOrders = 8;
 
+    [Header("Daily Goal")]
+    [Tooltip("Money needed to pass day 1. Falling short at the end of the day is a game over.")]
+    [SerializeField] private int firstDayGoal = 350;
+    [SerializeField] private int goalIncreasePerDay = 100;
+
     [Header("Delivery")]
     [Tooltip("Money lost when the selected cake belongs to a different cell. Money never goes below zero.")]
     [SerializeField] private int wrongDeliveryPenalty = 10;
@@ -49,6 +54,7 @@ public class PrisonOrderManager : MonoBehaviour
     private float remainingDaySeconds;
     private int earnedMoney;
     private int deliveredOrders;
+    private int wrongDeliveries;
     private bool dayEnded;
     private bool mapVisible;
     private bool playerLockHeld;
@@ -93,6 +99,12 @@ public class PrisonOrderManager : MonoBehaviour
         }
 
         SyncHud();
+        orderUi.SetDayGoal(DayProgress.CurrentDay, DailyGoal);
+    }
+
+    public int DailyGoal
+    {
+        get { return firstDayGoal + Mathf.Max(0, DayProgress.CurrentDay - 1) * goalIncreasePerDay; }
     }
 
     public void HandlePrisonerInteraction(PrisonerInteractable prisoner, PrisonCookPlayerController interactingPlayer)
@@ -135,6 +147,7 @@ public class PrisonOrderManager : MonoBehaviour
             // The prisoner refuses it, so the cake stays in the inventory but the mistake still costs money.
             int penalty = Mathf.Min(wrongDeliveryPenalty, earnedMoney);
             earnedMoney -= penalty;
+            wrongDeliveries++;
             if (orderUi != null)
             {
                 orderUi.SetMoney(earnedMoney);
@@ -288,11 +301,35 @@ public class PrisonOrderManager : MonoBehaviour
         if (orderUi != null)
         {
             orderUi.SetMapVisible(false, Vector3.zero, null);
-            orderUi.ShowDayResults(earnedMoney, deliveredOrders);
+            orderUi.ShowDayResults(BuildDaySummary());
         }
 
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+    }
+
+    private DaySummary BuildDaySummary()
+    {
+        int undelivered = 0;
+        for (int i = 0; i < prisoners.Count; i++)
+        {
+            if (prisoners[i] != null && prisoners[i].HasActiveOrder)
+            {
+                undelivered++;
+            }
+        }
+
+        return new DaySummary
+        {
+            Day = DayProgress.CurrentDay,
+            Goal = DailyGoal,
+            Money = earnedMoney,
+            DeliveredOrders = deliveredOrders,
+            PerfectCakes = orderUi != null ? orderUi.PerfectCakeCount : 0,
+            PrepMistakes = orderUi != null ? orderUi.PrepMistakeCount : 0,
+            WrongDeliveries = wrongDeliveries,
+            UndeliveredOrders = undelivered
+        };
     }
 
     private void HandleMapInput()

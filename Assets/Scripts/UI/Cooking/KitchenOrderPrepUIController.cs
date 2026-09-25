@@ -163,6 +163,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private Sprite placementIconButtonSprite;
     [SerializeField] private Sprite placementConfirmButtonSprite;
 
+    [Header("Dialogs")]
+    [Tooltip("Same art as the pause menu so every popup looks alike.")]
+    [SerializeField] private Sprite dialogPanelSprite;
+    [SerializeField] private Sprite dialogPrimaryButtonSprite;
+    [SerializeField] private Sprite dialogSecondaryButtonSprite;
+    [SerializeField] private Sprite dialogCloseButtonSprite;
+    [SerializeField] private string gameplaySceneName = "MainMap";
+
     [Header("Board Summary")]
     [SerializeField] private Text totalMoneyText;
     [SerializeField] private Text timerText;
@@ -203,8 +211,18 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private int displayedMoney;
     private int lastDisplayedTimerSeconds = -1;
     private GameObject resultsMenuRoot;
-    private Text resultsMoneyText;
-    private Text resultsOrdersText;
+    private Text resultsTitleText;
+    private Text resultsSubtitleText;
+    private Text resultsStatsText;
+    private Text resultsPrimaryLabel;
+    private bool resultsGoalReached;
+    private Text controlsPopupTitleText;
+    private Text controlsPopupGoalText;
+    private Text dayGoalHudText;
+    private int currentDay = 1;
+    private int dayGoal;
+    private int perfectCakeCount;
+    private int prepMistakeCount;
     private GameObject mapOverlayRoot;
     private RectTransform mapContentRoot;
     private GameObject controlsPopupRoot;
@@ -219,6 +237,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private GameObject stageTabPanelsRoot;
     private GameObject tabBarRoot;
     private Text waitingOrderText;
+    private Text dragHintText;
+    private string dragHintDefaultText;
+    private const string WaitingOrderMessage = "Esperando orden para iniciar...";
+    private const string InventoryFullMessage = "Inventario lleno\nEntrega un pastel antes de preparar otra orden.";
 
     private Button[] sizeOptionButtons;
     private Image[] sizeOptionBackgrounds;
@@ -281,6 +303,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     public bool IsOpen
     {
         get { return menuRoot != null && menuRoot.activeSelf; }
+    }
+
+    public int PerfectCakeCount
+    {
+        get { return perfectCakeCount; }
+    }
+
+    public int PrepMistakeCount
+    {
+        get { return prepMistakeCount; }
     }
 
     // Orders on the board that are not cakes yet; finished cakes leave the board for the inventory.
@@ -472,6 +504,57 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     {
         displayedMoney = Mathf.Max(0, amount);
         SyncBoardSummary();
+        RefreshDayGoalHud();
+    }
+
+    public void SetDayGoal(int day, int goal)
+    {
+        InitializeUi();
+        currentDay = Mathf.Max(1, day);
+        dayGoal = Mathf.Max(0, goal);
+
+        if (controlsPopupTitleText != null)
+        {
+            controlsPopupTitleText.text = "Día " + currentDay;
+        }
+
+        if (controlsPopupGoalText != null)
+        {
+            controlsPopupGoalText.text = "Meta del día: Q" + dayGoal;
+        }
+
+        RefreshDayGoalHud();
+    }
+
+    private void BuildDayGoalHud()
+    {
+        if (dayGoalHudText != null || totalMoneyText == null || totalMoneyText.transform.parent == null)
+        {
+            return;
+        }
+
+        // Sits right under the money card so the target is always next to what you have.
+        RectTransform moneyCard = totalMoneyText.rectTransform;
+        dayGoalHudText = CreateText("DayGoalText", moneyCard.parent, string.Empty, 24, FontStyle.Normal, TextAnchor.UpperCenter);
+        dayGoalHudText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        dayGoalHudText.resizeTextForBestFit = false;
+        SetRect(dayGoalHudText.rectTransform, moneyCard.anchorMin, moneyCard.anchorMax, moneyCard.anchoredPosition + new Vector2(0f, -30f), new Vector2(220f, 30f), new Vector2(0.5f, 1f));
+        Outline outline = dayGoalHudText.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0.35f, 0.18f, 0.12f, 1f);
+        outline.effectDistance = new Vector2(2f, -2f);
+        RefreshDayGoalHud();
+    }
+
+    private void RefreshDayGoalHud()
+    {
+        if (dayGoalHudText == null)
+        {
+            return;
+        }
+
+        dayGoalHudText.gameObject.SetActive(dayGoal > 0);
+        dayGoalHudText.text = "Meta: Q" + dayGoal;
+        dayGoalHudText.color = displayedMoney >= dayGoal ? new Color(0.62f, 1f, 0.55f, 1f) : new Color(1f, 0.97f, 0.9f, 1f);
     }
 
     public void SetTimerSeconds(float seconds)
@@ -498,7 +581,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         timerText.text = minutes.ToString("00") + ":" + remainder.ToString("00");
     }
 
-    public void ShowDayResults(int money, int deliveredOrderCount)
+    public void ShowDayResults(DaySummary summary)
     {
         InitializeUi();
         Close();
@@ -507,14 +590,35 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             BuildResultsMenu();
         }
 
-        if (resultsMoneyText != null)
+        resultsGoalReached = summary.GoalReached;
+        int mistakes = summary.PrepMistakes + summary.WrongDeliveries;
+
+        if (resultsTitleText != null)
         {
-            resultsMoneyText.text = "Dinero obtenido: Q" + Mathf.Max(0, money);
+            resultsTitleText.text = resultsGoalReached ? "¡Día " + summary.Day + " completado!" : "Game Over";
+            resultsTitleText.color = resultsGoalReached ? Color.black : new Color(0.62f, 0.12f, 0.10f, 1f);
         }
 
-        if (resultsOrdersText != null)
+        if (resultsSubtitleText != null)
         {
-            resultsOrdersText.text = "Ordenes entregadas: " + Mathf.Max(0, deliveredOrderCount);
+            resultsSubtitleText.text = resultsGoalReached
+                ? "Alcanzaste la meta de Q" + summary.Goal
+                : "No alcanzaste la meta de Q" + summary.Goal;
+        }
+
+        if (resultsStatsText != null)
+        {
+            resultsStatsText.text =
+                "Dinero obtenido: Q" + Mathf.Max(0, summary.Money) + " / Q" + summary.Goal + "\n" +
+                "Órdenes entregadas: " + summary.DeliveredOrders + "\n" +
+                "Pasteles perfectos: " + summary.PerfectCakes + "\n" +
+                "Errores cometidos: " + mistakes + " (" + summary.PrepMistakes + " al preparar, " + summary.WrongDeliveries + " al entregar)\n" +
+                "Órdenes sin entregar: " + summary.UndeliveredOrders;
+        }
+
+        if (resultsPrimaryLabel != null)
+        {
+            resultsPrimaryLabel.text = resultsGoalReached ? "Ir al siguiente día" : "Reintentar día";
         }
 
         if (resultsMenuRoot != null)
@@ -523,6 +627,19 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
     }
 
+    private void HandleResultsPrimaryButton()
+    {
+        if (resultsGoalReached)
+        {
+            DayProgress.AdvanceDay();
+        }
+
+        // Reloading the gameplay scene resets orders, money and the timer; DayProgress keeps the day number.
+        Time.timeScale = 1f;
+        SetPlayerInputLocked(false);
+        CloseControlsPopup();
+        SceneManager.LoadScene(gameplaySceneName);
+    }
     public void ReturnToMainMenu()
     {
         Time.timeScale = 1f;
@@ -610,6 +727,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         BuildResultsMenu();
         BuildMapOverlay();
         BuildControlsPopup();
+        BuildDayGoalHud();
         SetMenuVisible(false);
         SetOrderBoardInteractable(false);
         allOrders.Clear();
@@ -851,7 +969,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void BeginPrepFromDroppedOrder(RuntimeOrder order)
     {
-        if (order == null || order.State != OrderRuntimeState.Pending || activePrepOrder != null)
+        if (order == null || order.State != OrderRuntimeState.Pending || activePrepOrder != null || IsInventoryFull())
         {
             RefreshAllUi();
             return;
@@ -1072,6 +1190,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void BuildWaitingOrderState()
     {
+        if (dragHintOverlay != null && dragHintText == null)
+        {
+            dragHintText = dragHintOverlay.GetComponentInChildren<Text>(true);
+            dragHintDefaultText = dragHintText != null ? dragHintText.text : string.Empty;
+        }
+
         if (tabPanels != null && tabPanels.Length > 0 && tabPanels[0] != null && tabPanels[0].transform.parent != null)
         {
             stageTabPanelsRoot = tabPanels[0].transform.parent.gameObject;
@@ -1095,7 +1219,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        waitingOrderText = CreateText("WaitingOrderText", stagePanel, "Esperando orden para iniciar...", 44, FontStyle.Normal, TextAnchor.MiddleCenter);
+        waitingOrderText = CreateText("WaitingOrderText", stagePanel, WaitingOrderMessage, 44, FontStyle.Normal, TextAnchor.MiddleCenter);
         waitingOrderText.color = new Color(0.38f, 0.37f, 0.36f, 1f);
         SetRect(waitingOrderText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-120f, -120f), new Vector2(0.5f, 0.5f));
     }
@@ -1108,6 +1232,30 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (tabBarRoot != null) tabBarRoot.SetActive(hasActiveOrder);
         if (centerStageTitle != null) centerStageTitle.gameObject.SetActive(hasActiveOrder);
         if (waitingOrderText != null) waitingOrderText.gameObject.SetActive(!hasActiveOrder);
+
+        bool inventoryFull = !hasActiveOrder && IsInventoryFull();
+        if (waitingOrderText != null)
+        {
+            waitingOrderText.text = inventoryFull ? InventoryFullMessage : WaitingOrderMessage;
+            waitingOrderText.color = inventoryFull ? new Color(0.62f, 0.14f, 0.10f, 1f) : new Color(0.38f, 0.37f, 0.36f, 1f);
+        }
+
+        if (dragHintText != null)
+        {
+            dragHintText.text = inventoryFull ? "Inventario lleno" : dragHintDefaultText;
+        }
+
+        // The pulsing arrow invites a drag, which is exactly what can't happen with a full inventory.
+        if (dragHintPointer != null)
+        {
+            dragHintPointer.gameObject.SetActive(!inventoryFull);
+        }
+    }
+
+    private bool IsInventoryFull()
+    {
+        EnsurePlayerController();
+        return playerController != null && playerController.Inventory.IsFull;
     }
 
     private void BuildSizeTab(RectTransform panel)
@@ -1542,7 +1690,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         bool wasAlreadyActive = order != null && order == activePrepOrder;
         selectedOrder = order;
 
-        if (order != null && order.State == OrderRuntimeState.Pending && activePrepOrder == null)
+        if (order != null && order.State == OrderRuntimeState.Pending && activePrepOrder == null && !IsInventoryFull())
         {
             activePrepOrder = order;
             activePrepOrder.State = OrderRuntimeState.ActivePrep;
@@ -1756,6 +1904,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Close();
         // The cake now lives in the inventory with its cell, so the order card would only be clutter.
         RemoveOrder(finishedOrder.Data.id);
+        int cakeMistakes = GetCakeMistakes(finishedOrder).Count;
+        prepMistakeCount += cakeMistakes;
+        if (cakeMistakes == 0)
+        {
+            perfectCakeCount++;
+        }
+
         ShowInventoryMessage(GetFinishedCakeMessage(finishedOrder));
     }
 
@@ -1784,6 +1939,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void RefreshCardStates()
     {
+        // A finished cake needs a free slot, so no new order may start while the inventory is full.
+        bool blockedByInventory = activePrepOrder == null && IsInventoryFull();
         for (int i = 0; i < spawnedOrders.Count; i++)
         {
             RuntimeOrder runtimeOrder = spawnedOrders[i];
@@ -1795,7 +1952,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             bool isSelected = runtimeOrder == selectedOrder;
             bool isActive = runtimeOrder == activePrepOrder || runtimeOrder.State == OrderRuntimeState.ActivePrep;
             bool isCompleted = runtimeOrder.State == OrderRuntimeState.Completed;
-            bool isInteractable = IsOpen && runtimeOrder.State == OrderRuntimeState.Pending && (activePrepOrder == null || activePrepOrder == runtimeOrder);
+            bool isInteractable = IsOpen && !blockedByInventory && runtimeOrder.State == OrderRuntimeState.Pending && (activePrepOrder == null || activePrepOrder == runtimeOrder);
 
             runtimeOrder.CardView.SetSelected(isSelected);
             runtimeOrder.CardView.SetActiveState(isActive);
@@ -2411,7 +2568,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return Mathf.Max(0, Mathf.RoundToInt(order.BasePayoutValue * (1f - Mathf.Clamp01(penalty))));
     }
 
-    private static string GetFinishedCakeMessage(RuntimeOrder order)
+    private static List<string> GetCakeMistakes(RuntimeOrder order)
     {
         List<string> mistakes = new List<string>();
         if (!order.SizeMatched) mistakes.Add("tamano");
@@ -2419,11 +2576,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (order.BakeOutcome == BakeResult.Undercooked) mistakes.Add("crudo");
         if (order.BakeOutcome == BakeResult.Burnt) mistakes.Add("quemado");
         if (!order.ToppingMatched) mistakes.Add("topping");
+        return mistakes;
+    }
 
+    private static string GetFinishedCakeMessage(RuntimeOrder order)
+    {
+        List<string> mistakes = GetCakeMistakes(order);
         string message = "Pastel para la celda #" + order.Data.cellNumber + " listo: Q" + order.FinalPayout;
         return mistakes.Count == 0 ? message + ". Perfecto!" : message + " (errores: " + string.Join(", ", mistakes.ToArray()) + ")";
     }
-
     private bool AddCakeToInventory(RuntimeOrder order)
     {
         EnsurePlayerController();
@@ -2655,30 +2816,61 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         resultsMenuRoot = blocker.gameObject;
         SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
 
-        Image panel = CreateImage("ResultsPanel", blocker.transform, new Color(0.94f, 0.91f, 0.83f, 1f));
-        SetRect(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(560f, 380f), new Vector2(0.5f, 0.5f));
-        Outline outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = Color.black;
-        outline.effectDistance = new Vector2(2f, -2f);
+        Image panel = CreateDialogPanel("ResultsPanel", blocker.transform, new Vector2(820f, 640f));
 
-        Text title = CreateText("ResultsTitle", panel.transform, "Fin del dia", 36, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -64f), new Vector2(460f, 52f), new Vector2(0.5f, 0.5f));
+        resultsTitleText = CreateText("ResultsTitle", panel.transform, "Fin del día", 50, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(resultsTitleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(720f, 64f), new Vector2(0.5f, 0.5f));
 
-        resultsMoneyText = CreateText("ResultsMoney", panel.transform, "Dinero obtenido: Q0", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(resultsMoneyText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 42f), new Vector2(480f, 42f), new Vector2(0.5f, 0.5f));
+        resultsSubtitleText = CreateText("ResultsSubtitle", panel.transform, string.Empty, 28, FontStyle.Normal, TextAnchor.MiddleCenter);
+        resultsSubtitleText.color = new Color(0.35f, 0.18f, 0.12f, 1f);
+        SetRect(resultsSubtitleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(720f, 40f), new Vector2(0.5f, 0.5f));
 
-        resultsOrdersText = CreateText("ResultsOrders", panel.transform, "Ordenes entregadas: 0", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(resultsOrdersText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(480f, 42f), new Vector2(0.5f, 0.5f));
+        resultsStatsText = CreateText("ResultsStats", panel.transform, string.Empty, 28, FontStyle.Normal, TextAnchor.MiddleLeft);
+        resultsStatsText.lineSpacing = 1.25f;
+        resultsStatsText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        resultsStatsText.verticalOverflow = VerticalWrapMode.Truncate;
+        SetRect(resultsStatsText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(720f, 240f), new Vector2(0.5f, 0.5f));
 
-        Button mainMenuButton = CreateButton("ResultsMainMenuButton", panel.transform, new Color(1f, 0.88f, 0.60f, 1f));
-        SetRect(mainMenuButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 62f), new Vector2(280f, 58f), new Vector2(0.5f, 0.5f));
-        Text mainMenuLabel = CreateText("Label", mainMenuButton.transform, "Main Menu", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(mainMenuLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        Button primaryButton = CreateDialogButton("ResultsPrimaryButton", panel.transform, dialogPrimaryButtonSprite, "Ir al siguiente día", Color.black, new Vector2(-180f, 90f), out resultsPrimaryLabel);
+        primaryButton.onClick.AddListener(HandleResultsPrimaryButton);
+
+        Text mainMenuLabel;
+        Button mainMenuButton = CreateDialogButton("ResultsMainMenuButton", panel.transform, dialogSecondaryButtonSprite, "Main Menu", new Color(0.992f, 0.961f, 0.902f, 1f), new Vector2(180f, 90f), out mainMenuLabel);
         mainMenuButton.onClick.AddListener(ReturnToMainMenu);
 
         resultsMenuRoot.SetActive(false);
     }
 
+    // Panel and buttons mirror the pause menu: Container3 panel, white/red square buttons, 50 pt title.
+    private Image CreateDialogPanel(string objectName, Transform parent, Vector2 size)
+    {
+        Image panel = CreateImage(objectName, parent, new Color(0.96f, 0.94f, 0.90f, 1f));
+        SetRect(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size, new Vector2(0.5f, 0.5f));
+        if (dialogPanelSprite != null)
+        {
+            panel.sprite = dialogPanelSprite;
+            panel.type = Image.Type.Sliced;
+        }
+        else
+        {
+            Outline outline = panel.gameObject.AddComponent<Outline>();
+            outline.effectColor = Color.black;
+            outline.effectDistance = new Vector2(2f, -2f);
+        }
+
+        return panel;
+    }
+
+    private Button CreateDialogButton(string objectName, Transform parent, Sprite sprite, string label, Color labelColor, Vector2 bottomOffset, out Text labelText)
+    {
+        Button button = CreateButton(objectName, parent, sprite != null ? Color.white : new Color(1f, 0.88f, 0.60f, 1f));
+        StylePlacementButton(button, sprite, true);
+        SetRect(button.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), bottomOffset, new Vector2(320f, 72f), new Vector2(0.5f, 0.5f));
+        labelText = CreateText("Label", button.transform, label, 28, FontStyle.Normal, TextAnchor.MiddleCenter);
+        labelText.color = labelColor;
+        SetRect(labelText.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-24f, -12f), new Vector2(0.5f, 0.5f));
+        return button;
+    }
     private void BuildControlsPopup()
     {
         if (controlsPopupRoot != null || rootCanvas == null)
@@ -2690,41 +2882,43 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         controlsPopupRoot = blocker.gameObject;
         SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
 
-        Image panel = CreateImage("ControlsPopupPanel", blocker.transform, new Color(0.94f, 0.91f, 0.83f, 1f));
-        SetRect(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760f, 360f), new Vector2(0.5f, 0.5f));
-        Outline outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = Color.black;
-        outline.effectDistance = new Vector2(2f, -2f);
+        Image panel = CreateDialogPanel("ControlsPopupPanel", blocker.transform, new Vector2(860f, 600f));
 
-        Text title = CreateText("ControlsPopupTitle", panel.transform, "Controles", 36, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -54f), new Vector2(620f, 52f), new Vector2(0.5f, 0.5f));
+        controlsPopupTitleText = CreateText("ControlsPopupTitle", panel.transform, "Día " + currentDay, 50, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(controlsPopupTitleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -78f), new Vector2(720f, 64f), new Vector2(0.5f, 0.5f));
+
+        controlsPopupGoalText = CreateText("ControlsPopupGoal", panel.transform, dayGoal > 0 ? "Meta del día: Q" + dayGoal : string.Empty, 34, FontStyle.Normal, TextAnchor.MiddleCenter);
+        controlsPopupGoalText.color = new Color(0.62f, 0.20f, 0.12f, 1f);
+        SetRect(controlsPopupGoalText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(720f, 48f), new Vector2(0.5f, 0.5f));
+
+        Text goalHint = CreateText("ControlsPopupGoalHint", panel.transform, "Junta ese dinero antes de que se acabe el tiempo o será Game Over.", 22, FontStyle.Normal, TextAnchor.MiddleCenter);
+        goalHint.color = new Color(0.35f, 0.18f, 0.12f, 1f);
+        SetRect(goalHint.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -188f), new Vector2(700f, 56f), new Vector2(0.5f, 0.5f));
 
         Text body = CreateText(
             "ControlsPopupBody",
             panel.transform,
-            "- Utiliza Space o E para interactuar con tu estacion de cocina y con los prisioneros.\n\n- Los pasteles terminados van a tu inventario. Elige uno con las teclas 1-5 o la rueda del mouse y habla con el preso de esa celda para entregarlo.",
+            "- Utiliza Space o E para interactuar con tu estación de cocina y con los prisioneros.\n\n- Los pasteles terminados van a tu inventario. Elige uno con las teclas 1-5 o la rueda del mouse y habla con el preso de esa celda para entregarlo.",
             24,
-            FontStyle.Bold,
+            FontStyle.Normal,
             TextAnchor.MiddleLeft);
         body.horizontalOverflow = HorizontalWrapMode.Wrap;
         body.verticalOverflow = VerticalWrapMode.Overflow;
-        SetRect(body.rectTransform, new Vector2(0.08f, 0.28f), new Vector2(0.92f, 0.76f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        SetRect(body.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -30f), new Vector2(700f, 170f), new Vector2(0.5f, 0.5f));
 
         Button closeXButton = CreateButton("ControlsPopupCloseX", panel.transform, new Color(0.97f, 0.96f, 0.93f, 1f));
-        SetRect(closeXButton.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-30f, -30f), new Vector2(42f, 42f), new Vector2(0.5f, 0.5f));
-        Text closeXLabel = CreateText("Label", closeXButton.transform, "X", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
+        StylePlacementButton(closeXButton, dialogCloseButtonSprite, false);
+        SetRect(closeXButton.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-60f, -52f), new Vector2(52f, 48f), new Vector2(0.5f, 0.5f));
+        Text closeXLabel = CreateText("Label", closeXButton.transform, "X", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
         SetRect(closeXLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
         closeXButton.onClick.AddListener(CloseControlsPopup);
 
-        Button continueButton = CreateButton("ControlsPopupContinue", panel.transform, new Color(1f, 0.88f, 0.60f, 1f));
-        SetRect(continueButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), new Vector2(220f, 56f), new Vector2(0.5f, 0.5f));
-        Text continueLabel = CreateText("Label", continueButton.transform, "Entendido", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(continueLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        Text continueLabel;
+        Button continueButton = CreateDialogButton("ControlsPopupContinue", panel.transform, dialogPrimaryButtonSprite, "¡A cocinar!", Color.black, new Vector2(0f, 90f), out continueLabel);
         continueButton.onClick.AddListener(CloseControlsPopup);
 
         controlsPopupRoot.SetActive(false);
     }
-
     private void BuildMapOverlay()
     {
         if (mapOverlayRoot != null || rootCanvas == null)

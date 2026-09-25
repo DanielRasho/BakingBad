@@ -26,6 +26,7 @@ public class MainMenuController : MonoBehaviour
     public void StartGame()
     {
         Time.timeScale = 1f;
+        DayProgress.StartNewGame();
         SceneManager.LoadScene(kitchenSceneName);
     }
 
