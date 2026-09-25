@@ -26,6 +26,8 @@ public class PrisonOrderManager : MonoBehaviour
     [Header("Timing")]
     [SerializeField] private float dayDurationSeconds = 600f;
     [SerializeField] private float prisonerOrderCooldownSeconds = 15f;
+    [Tooltip("Orders taken but not yet cooked; more would overflow the order board.")]
+    [SerializeField] private int maxQueuedOrders = 8;
 
     [Header("Delivery")]
     [Tooltip("Money lost when the selected cake belongs to a different cell. Money never goes below zero.")]
@@ -200,14 +202,26 @@ public class PrisonOrderManager : MonoBehaviour
             return false;
         }
 
+        if (orderUi.QueuedOrderCount >= maxQueuedOrders)
+        {
+            ShowInventoryMessage("Solo puedes tener " + maxQueuedOrders + " recetas en cola. Prepara alguna antes de pedir otra.");
+            return false;
+        }
+
         if (availableOrders.Count == 0)
         {
-            if (logOrderFlow)
+            // The JSON only has a handful of recipes; reshuffle them so prisoners keep ordering all day.
+            // Order ids include the cell, so a repeated recipe never collides with one still in progress.
+            LoadOrderPool();
+            if (availableOrders.Count == 0)
             {
-                Debug.Log("No daily orders left in the pool.");
+                return false;
             }
 
-            return false;
+            if (logOrderFlow)
+            {
+                Debug.Log("Order pool refilled.");
+            }
         }
 
         int orderIndex = UnityEngine.Random.Range(0, availableOrders.Count);
@@ -228,6 +242,11 @@ public class PrisonOrderManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    public bool CanQueueMoreOrders
+    {
+        get { return orderUi == null || orderUi.QueuedOrderCount < maxQueuedOrders; }
     }
 
     private void ShowInventoryMessage(string message)

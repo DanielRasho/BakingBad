@@ -283,6 +283,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         get { return menuRoot != null && menuRoot.activeSelf; }
     }
 
+    // Orders on the board that are not cakes yet; finished cakes leave the board for the inventory.
+    public int QueuedOrderCount
+    {
+        get { return spawnedOrders.Count; }
+    }
+
     private void Awake()
     {
         InitializeUi();
@@ -2843,46 +2849,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         const int width = 128;
         const int height = 112;
-        cakeSizeCylinderSprite = CreateProceduralSprite("CakeSizeCylinder", width, height, new Vector2(0.5f, 0f), (x, y) => SampleCylinder(x, y, width, height));
+        cakeSizeCylinderSprite = ProceduralSprites.Create("CakeSizeCylinder", width, height, new Vector2(0.5f, 0f), (x, y) => SampleCylinder(x, y, width, height));
         return cakeSizeCylinderSprite;
-    }
-
-    // Renders a sampler into a sprite with 4x4 supersampling so edges stay smooth when the UI scales.
-    private static Sprite CreateProceduralSprite(string spriteName, int width, int height, Vector2 pivot, Func<float, float, Color> sampler)
-    {
-        const int subSamples = 4;
-        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        texture.name = spriteName;
-        texture.filterMode = FilterMode.Bilinear;
-        texture.wrapMode = TextureWrapMode.Clamp;
-
-        Color[] pixels = new Color[width * height];
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                Color accumulated = Color.clear;
-                for (int sy = 0; sy < subSamples; sy++)
-                {
-                    for (int sx = 0; sx < subSamples; sx++)
-                    {
-                        Color sample = sampler(x + (sx + 0.5f) / subSamples, y + (sy + 0.5f) / subSamples);
-                        accumulated += new Color(sample.r * sample.a, sample.g * sample.a, sample.b * sample.a, sample.a);
-                    }
-                }
-
-                accumulated /= subSamples * subSamples;
-                pixels[y * width + x] = accumulated.a > 0f
-                    ? new Color(accumulated.r / accumulated.a, accumulated.g / accumulated.a, accumulated.b / accumulated.a, accumulated.a)
-                    : Color.clear;
-            }
-        }
-
-        texture.SetPixels(pixels);
-        texture.Apply(false, true);
-        Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, width, height), pivot, 100f);
-        sprite.name = spriteName;
-        return sprite;
     }
 
     private static Sprite GetPlacementHoleSprite(PlacementHoleShape shape)
@@ -2894,7 +2862,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         const int size = 256;
-        sprite = CreateProceduralSprite("PlacementHole_" + shape, size, size, new Vector2(0.5f, 0.5f), (x, y) => SamplePlacementHole(shape, x - size * 0.5f, y - size * 0.5f, size * 0.5f - 8f));
+        sprite = ProceduralSprites.Create("PlacementHole_" + shape, size, size, new Vector2(0.5f, 0.5f), (x, y) => SamplePlacementHole(shape, x - size * 0.5f, y - size * 0.5f, size * 0.5f - 8f));
         placementHoleSprites[shape] = sprite;
         return sprite;
     }
@@ -2925,11 +2893,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         switch (shape)
         {
             case PlacementHoleShape.Star:
-                return PolygonDistance(point, CreateStarVertices(5, radius, radius * 0.5f));
+                return ProceduralSprites.PolygonDistance(point, CreateStarVertices(5, radius, radius * 0.5f));
             case PlacementHoleShape.Hexagon:
-                return PolygonDistance(point, CreateStarVertices(3, radius, radius));
+                return ProceduralSprites.PolygonDistance(point, CreateStarVertices(3, radius, radius));
             case PlacementHoleShape.Diamond:
-                return PolygonDistance(point, new[] { new Vector2(0f, radius), new Vector2(-radius * 0.72f, 0f), new Vector2(0f, -radius), new Vector2(radius * 0.72f, 0f) });
+                return ProceduralSprites.PolygonDistance(point, new[] { new Vector2(0f, radius), new Vector2(-radius * 0.72f, 0f), new Vector2(0f, -radius), new Vector2(radius * 0.72f, 0f) });
             case PlacementHoleShape.Flower:
                 return length - radius * (0.82f + 0.18f * Mathf.Cos(6f * angle));
             case PlacementHoleShape.Blob:
@@ -2954,30 +2922,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return vertices;
     }
 
-    // Signed distance to an arbitrary closed polygon (negative inside).
-    private static float PolygonDistance(Vector2 point, Vector2[] vertices)
-    {
-        float squaredDistance = (point - vertices[0]).sqrMagnitude;
-        float sign = 1f;
-        for (int i = 0, j = vertices.Length - 1; i < vertices.Length; j = i, i++)
-        {
-            Vector2 edge = vertices[j] - vertices[i];
-            Vector2 toPoint = point - vertices[i];
-            Vector2 closest = toPoint - edge * Mathf.Clamp01(Vector2.Dot(toPoint, edge) / Vector2.Dot(edge, edge));
-            squaredDistance = Mathf.Min(squaredDistance, closest.sqrMagnitude);
-
-            bool aboveStart = point.y >= vertices[i].y;
-            bool belowEnd = point.y < vertices[j].y;
-            bool leftOfEdge = edge.x * toPoint.y > edge.y * toPoint.x;
-            if ((aboveStart && belowEnd && leftOfEdge) || (!aboveStart && !belowEnd && !leftOfEdge))
-            {
-                sign = -sign;
-            }
-        }
-
-        return sign * Mathf.Sqrt(squaredDistance);
-    }
-
     private static Sprite GetPlacementIconSprite(PlacementIcon icon)
     {
         Sprite sprite;
@@ -2987,7 +2931,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         const int size = 64;
-        sprite = CreateProceduralSprite("PlacementIcon_" + icon, size, size, new Vector2(0.5f, 0.5f), (x, y) => SamplePlacementIcon(icon, x, y));
+        sprite = ProceduralSprites.Create("PlacementIcon_" + icon, size, size, new Vector2(0.5f, 0.5f), (x, y) => SamplePlacementIcon(icon, x, y));
         placementIconSprites[icon] = sprite;
         return sprite;
     }
@@ -3012,12 +2956,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 Vector2 lensCenter = new Vector2(27f, 37f);
                 Vector2 lensPoint = new Vector2(px, py);
                 float lens = (lensPoint - lensCenter).magnitude - 17f;
-                float handle = CapsuleDistance(lensPoint, new Vector2(38f, 26f), new Vector2(52f, 12f), 5f);
+                float handle = ProceduralSprites.CapsuleDistance(lensPoint, new Vector2(38f, 26f), new Vector2(52f, 12f), 5f);
                 shapeDistance = Mathf.Min(lens, handle);
-                symbolDistance = CapsuleDistance(lensPoint, new Vector2(19f, 37f), new Vector2(35f, 37f), 2.8f);
+                symbolDistance = ProceduralSprites.CapsuleDistance(lensPoint, new Vector2(19f, 37f), new Vector2(35f, 37f), 2.8f);
                 if (icon == PlacementIcon.ZoomIn)
                 {
-                    symbolDistance = Mathf.Min(symbolDistance, CapsuleDistance(lensPoint, new Vector2(27f, 29f), new Vector2(27f, 45f), 2.8f));
+                    symbolDistance = Mathf.Min(symbolDistance, ProceduralSprites.CapsuleDistance(lensPoint, new Vector2(27f, 29f), new Vector2(27f, 45f), 2.8f));
                 }
                 break;
         }
@@ -3057,14 +3001,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Vector2 normal = new Vector2(Mathf.Cos(endAngle), Mathf.Sin(endAngle));
         Vector2 baseCenter = arcEnd - tangent * 2f;
         Vector2[] head = { arcEnd + tangent * 11f, baseCenter - normal * 10f, baseCenter + normal * 10f };
-        return Mathf.Min(arc, PolygonDistance(point, head));
-    }
-
-    private static float CapsuleDistance(Vector2 point, Vector2 start, Vector2 end, float radius)
-    {
-        Vector2 segment = end - start;
-        float t = Mathf.Clamp01(Vector2.Dot(point - start, segment) / Vector2.Dot(segment, segment));
-        return (point - (start + segment * t)).magnitude - radius;
+        return Mathf.Min(arc, ProceduralSprites.PolygonDistance(point, head));
     }
 
     private static Color SampleCylinder(float px, float py, int width, int height)

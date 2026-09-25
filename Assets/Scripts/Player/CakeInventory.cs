@@ -97,6 +97,25 @@ public class CakeInventory : MonoBehaviour
         return index >= 0 && index < slots.Length ? slots[index] : null;
     }
 
+    public CakeInventoryItem FindByOrderId(string orderId)
+    {
+        EnsureSlots();
+        if (string.IsNullOrEmpty(orderId))
+        {
+            return null;
+        }
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && slots[i].orderId == orderId)
+            {
+                return slots[i];
+            }
+        }
+
+        return null;
+    }
+
     public void Select(int index)
     {
         EnsureSlots();
