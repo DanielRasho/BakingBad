@@ -25,7 +25,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     }
 
     [Serializable]
-    public class ContrabandIconEntry
+    public class NamedIconEntry
     {
         public string itemName;
         public Sprite icon;
@@ -94,6 +94,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public float PieceScale = 1f;
         public CakeSizeOption SelectedCakeSize = CakeSizeOption.None;
         public bool SizeMatched;
+        public bool PlacementCorrect;
         public bool PlacementCompleted;
         public float PlacementScore;
         public Vector2 PieceAnchoredPosition;
@@ -144,7 +145,19 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private GameObject dragHintOverlay;
     [SerializeField] private RectTransform dragHintPointer;
     [Tooltip("Icon shown in the recipe card for each contrabandItem name in the orders JSON.")]
-    [SerializeField] private ContrabandIconEntry[] contrabandIcons;
+    [SerializeField] private NamedIconEntry[] contrabandIcons;
+    [Tooltip("Cake slice shown in the topping options and the inventory for each topping name.")]
+    [SerializeField] private NamedIconEntry[] toppingCakeIcons;
+    [SerializeField] private Sprite toppingSlotSprite;
+    [SerializeField] private Sprite toppingSelectedSlotSprite;
+    [SerializeField] private CakeInventoryHud inventoryHud;
+
+    [Header("Payout Penalties (fraction of base payout)")]
+    [SerializeField, Range(0f, 1f)] private float wrongSizePenalty = 0.2f;
+    [SerializeField, Range(0f, 1f)] private float badPlacementPenalty = 0.2f;
+    [SerializeField, Range(0f, 1f)] private float undercookedPenalty = 0.2f;
+    [SerializeField, Range(0f, 1f)] private float burntPenalty = 0.3f;
+    [SerializeField, Range(0f, 1f)] private float wrongToppingPenalty = 0.2f;
 
     [Header("Placement Buttons")]
     [SerializeField] private Sprite placementIconButtonSprite;
@@ -240,6 +253,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Button[] toppingOptionButtons;
     private Image[] toppingOptionBackgrounds;
     private Text[] toppingOptionLabelTexts;
+    private Image[] toppingOptionCakeImages;
     private Text toppingFeedbackText;
 
     private const float OrderCardWidth = 136f;
@@ -927,15 +941,25 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private Sprite GetContrabandIcon(string contrabandItem)
     {
-        if (contrabandIcons == null || string.IsNullOrEmpty(contrabandItem))
+        return FindNamedIcon(contrabandIcons, contrabandItem);
+    }
+
+    private Sprite GetToppingCakeIcon(string topping)
+    {
+        return FindNamedIcon(toppingCakeIcons, topping);
+    }
+
+    private static Sprite FindNamedIcon(NamedIconEntry[] entries, string itemName)
+    {
+        if (entries == null || string.IsNullOrEmpty(itemName))
         {
             return null;
         }
 
-        for (int i = 0; i < contrabandIcons.Length; i++)
+        for (int i = 0; i < entries.Length; i++)
         {
-            ContrabandIconEntry entry = contrabandIcons[i];
-            if (entry != null && entry.icon != null && string.Equals(entry.itemName, contrabandItem, StringComparison.OrdinalIgnoreCase))
+            NamedIconEntry entry = entries[i];
+            if (entry != null && entry.icon != null && string.Equals(entry.itemName, itemName, StringComparison.OrdinalIgnoreCase))
             {
                 return entry.icon;
             }
@@ -1295,22 +1319,24 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         toppingOptionButtons = new Button[3];
         toppingOptionBackgrounds = new Image[3];
         toppingOptionLabelTexts = new Text[3];
-        float[] xPositions = { -220f, 0f, 220f };
+        toppingOptionCakeImages = new Image[3];
+        float[] xPositions = { -240f, 0f, 240f };
 
         for (int i = 0; i < 3; i++)
         {
             Button button = CreateButton("ToppingOption_" + i, panel, new Color(0.97f, 0.96f, 0.93f, 1f));
+            StylePlacementButton(button, toppingSlotSprite, true);
             RectTransform buttonRect = button.GetComponent<RectTransform>();
-            SetRect(buttonRect, new Vector2(0.5f, 0.54f), new Vector2(0.5f, 0.54f), new Vector2(xPositions[i], -20f), new Vector2(180f, 180f), new Vector2(0.5f, 0.5f));
+            SetRect(buttonRect, new Vector2(0.5f, 0.54f), new Vector2(0.5f, 0.54f), new Vector2(xPositions[i], -10f), new Vector2(200f, 216f), new Vector2(0.5f, 0.5f));
 
-            Image placeholder = CreateImage("SpritePlaceholder", buttonRect, Color.white);
-            SetRect(placeholder.rectTransform, new Vector2(0.5f, 0.7f), new Vector2(0.5f, 0.7f), Vector2.zero, new Vector2(82f, 82f), new Vector2(0.5f, 0.5f));
-            Outline outline = placeholder.gameObject.AddComponent<Outline>();
-            outline.effectColor = Color.black;
-            outline.effectDistance = new Vector2(1f, -1f);
+            Image cakeImage = CreateImage("CakeSlice", buttonRect, Color.white);
+            cakeImage.preserveAspect = true;
+            cakeImage.raycastTarget = false;
+            SetRect(cakeImage.rectTransform, new Vector2(0.5f, 0.62f), new Vector2(0.5f, 0.62f), Vector2.zero, new Vector2(130f, 120f), new Vector2(0.5f, 0.5f));
 
-            Text label = CreateText("ToppingLabel", buttonRect, "--", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
-            SetRect(label.rectTransform, new Vector2(0.5f, 0.28f), new Vector2(0.5f, 0.28f), Vector2.zero, new Vector2(150f, 52f), new Vector2(0.5f, 0.5f));
+            Text label = CreateText("ToppingLabel", buttonRect, "--", 26, FontStyle.Normal, TextAnchor.MiddleCenter);
+            label.color = toppingSlotSprite != null ? Color.white : Color.black;
+            SetRect(label.rectTransform, new Vector2(0.5f, 0.2f), new Vector2(0.5f, 0.2f), Vector2.zero, new Vector2(170f, 44f), new Vector2(0.5f, 0.5f));
 
             int capturedIndex = i;
             button.onClick.AddListener(() => HandleToppingSelected(capturedIndex));
@@ -1318,6 +1344,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             toppingOptionButtons[i] = button;
             toppingOptionBackgrounds[i] = button.GetComponent<Image>();
             toppingOptionLabelTexts[i] = label;
+            toppingOptionCakeImages[i] = cakeImage;
         }
 
         toppingFeedbackText = CreateText("ToppingFeedbackText", panel, "Selecciona el topping correcto.", 20, FontStyle.Normal, TextAnchor.MiddleCenter);
@@ -1533,29 +1560,26 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
+        if (IsSizeChosen(activePrepOrder))
+        {
+            return;
+        }
+
+        // A wrong size is allowed; it only lowers the payout when the cake is finished.
         activePrepOrder.SelectedCakeSize = selectedSize;
         activePrepOrder.SizeMatched = selectedSize == activePrepOrder.RequiredCakeSize;
-
-        if (activePrepOrder.SizeMatched)
-        {
-            sizeFeedbackText.text = "Tamano correcto: " + GetCakeSizeLabel(selectedSize) + ".";
-        }
-        else
-        {
-            sizeFeedbackText.text = "Este no es el tamano adecuado del pastel.";
-        }
-
         RefreshAllUi();
+        ActivateTab(1, true);
+    }
 
-        if (activePrepOrder.SizeMatched)
-        {
-            ActivateTab(1, true);
-        }
+    private static bool IsSizeChosen(RuntimeOrder order)
+    {
+        return order != null && order.SelectedCakeSize != CakeSizeOption.None;
     }
 
     private void RotatePlacementPiece(float deltaDegrees)
     {
-        if (placementPieceView == null || activePrepOrder == null || !activePrepOrder.SizeMatched || activePrepOrder.PlacementCompleted)
+        if (placementPieceView == null || activePrepOrder == null || !IsSizeChosen(activePrepOrder) || activePrepOrder.PlacementCompleted)
         {
             return;
         }
@@ -1565,7 +1589,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void ScalePlacementPiece(float deltaScale)
     {
-        if (placementPieceRect == null || activePrepOrder == null || !activePrepOrder.SizeMatched || activePrepOrder.PlacementCompleted)
+        if (placementPieceRect == null || activePrepOrder == null || !IsSizeChosen(activePrepOrder) || activePrepOrder.PlacementCompleted)
         {
             return;
         }
@@ -1592,7 +1616,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void ConfirmPlacement()
     {
-        if (activePrepOrder == null || !activePrepOrder.SizeMatched || activePrepOrder.PlacementCompleted)
+        if (activePrepOrder == null || !IsSizeChosen(activePrepOrder) || activePrepOrder.PlacementCompleted)
         {
             return;
         }
@@ -1602,19 +1626,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         float angleDelta = Mathf.Abs(Mathf.DeltaAngle(activePrepOrder.PieceRotationDegrees, activePrepOrder.TargetRotationDegrees));
         float scaleDelta = Mathf.Abs(activePrepOrder.PieceScale - activePrepOrder.TargetScale);
 
-        if (distance <= PlacementDistanceThreshold && angleDelta <= PlacementAngleThreshold && scaleDelta <= PlacementScaleThreshold)
-        {
-            activePrepOrder.PlacementCompleted = true;
-            activePrepOrder.PlacementScore = score;
-            placementStatusText.text = "Encaje correcto. El objeto ya esta oculto dentro del pastel.";
-            placementScoreText.text = "Precision: " + Mathf.RoundToInt(score * 100f) + "%";
-            RefreshAllUi();
-            ActivateTab(2, true);
-            return;
-        }
-
-        placementStatusText.text = GetPlacementHint(distance, angleDelta, activePrepOrder.PieceScale - activePrepOrder.TargetScale);
-        placementScoreText.text = "Precision actual: " + Mathf.RoundToInt(score * 100f) + "%";
+        // A loose fit is allowed; it only lowers the payout when the cake is finished.
+        activePrepOrder.PlacementCorrect = distance <= PlacementDistanceThreshold && angleDelta <= PlacementAngleThreshold && scaleDelta <= PlacementScaleThreshold;
+        activePrepOrder.PlacementCompleted = true;
+        activePrepOrder.PlacementScore = score;
+        RefreshAllUi();
+        ActivateTab(2, true);
     }
 
     private void HandleBakeAction()
@@ -1624,7 +1641,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        if (!activePrepOrder.BakeInProgress && activePrepOrder.BakeOutcome == BakeResult.Perfect)
+        if (!activePrepOrder.BakeInProgress && activePrepOrder.BakeOutcome != BakeResult.None)
         {
             return;
         }
@@ -1649,18 +1666,18 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         order.BakeOutcome = BakeResult.None;
         order.BakeInProgress = true;
         order.BakeProgressNormalized = 0f;
-        // Keep the zone the player already sees; a new one is rolled only after a failed attempt.
+        // Keep the zone the player already sees so it never jumps when the bar starts.
         EnsurePerfectBakeWindow(order);
     }
 
-    private void EnsurePerfectBakeWindow(RuntimeOrder order, bool forceNewWindow = false)
+    private void EnsurePerfectBakeWindow(RuntimeOrder order)
     {
         if (order == null)
         {
             return;
         }
 
-        if (!forceNewWindow && order.PerfectBakeWindowEnd > order.PerfectBakeWindowStart)
+        if (order.PerfectBakeWindowEnd > order.PerfectBakeWindowStart)
         {
             return;
         }
@@ -1700,7 +1717,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void HandleToppingSelected(int optionIndex)
     {
-        if (activePrepOrder == null || activePrepOrder.BakeOutcome != BakeResult.Perfect || activePrepOrder.ToppingOptions == null)
+        if (activePrepOrder == null || activePrepOrder.BakeOutcome == BakeResult.None || activePrepOrder.ToppingOptions == null)
         {
             return;
         }
@@ -1710,31 +1727,30 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
+        // A wrong topping is allowed; it only lowers the payout.
         string selectedTopping = activePrepOrder.ToppingOptions[optionIndex];
         activePrepOrder.SelectedTopping = selectedTopping;
         activePrepOrder.ToppingMatched = string.Equals(selectedTopping, activePrepOrder.Data.topping, StringComparison.OrdinalIgnoreCase);
-
-        if (!activePrepOrder.ToppingMatched)
-        {
-            toppingFeedbackText.text = "Este no es el topping adecuado del pastel.";
-            RefreshToppingUi();
-            return;
-        }
-
-        if (!CreateAndHoldCake(activePrepOrder))
-        {
-            toppingFeedbackText.text = "Las manos del jugador ya estan ocupadas. Suelta el pastel actual primero.";
-            RefreshToppingUi();
-            return;
-        }
-
-        activePrepOrder.CakeGenerated = true;
-        activePrepOrder.State = OrderRuntimeState.Completed;
         activePrepOrder.FinalPayout = CalculateFinalPayout(activePrepOrder);
+
+        if (!AddCakeToInventory(activePrepOrder))
+        {
+            activePrepOrder.SelectedTopping = null;
+            RefreshToppingUi();
+            toppingFeedbackText.text = "Tu inventario esta lleno. Entrega un pastel antes de terminar este.";
+            return;
+        }
+
+        RuntimeOrder finishedOrder = activePrepOrder;
+        finishedOrder.CakeGenerated = true;
+        finishedOrder.State = OrderRuntimeState.Completed;
 
         activePrepOrder = null;
         selectedOrder = null;
         Close();
+        // The cake now lives in the inventory with its cell, so the order card would only be clutter.
+        RemoveOrder(finishedOrder.Data.id);
+        ShowInventoryMessage(GetFinishedCakeMessage(finishedOrder));
     }
 
     private void SetSelectedOrder(RuntimeOrder order, bool forceUnlockedTabs)
@@ -1902,7 +1918,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         for (int i = 0; i < sizeOptionButtons.Length; i++)
         {
             bool isSelected = activePrepOrder != null && activePrepOrder.SelectedCakeSize == CakeSizeValues[i];
-            sizeOptionButtons[i].interactable = sizeTabAvailable;
+            sizeOptionButtons[i].interactable = sizeTabAvailable && !IsSizeChosen(activePrepOrder);
             if (sizeOptionBackgrounds != null && i < sizeOptionBackgrounds.Length && sizeOptionBackgrounds[i] != null)
             {
                 sizeOptionBackgrounds[i].color = isSelected ? tabActiveColor : tabIdleColor;
@@ -1915,19 +1931,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        if (activePrepOrder.SizeMatched)
+        if (IsSizeChosen(activePrepOrder))
         {
-            sizeFeedbackText.text = "Tamano confirmado: " + GetCakeSizeLabel(activePrepOrder.RequiredCakeSize) + ".";
+            sizeFeedbackText.text = "Tamano elegido: " + GetCakeSizeLabel(activePrepOrder.SelectedCakeSize) + ".";
             return;
         }
 
-        if (activePrepOrder.SelectedCakeSize != CakeSizeOption.None)
-        {
-            sizeFeedbackText.text = "Seleccion actual: " + GetCakeSizeLabel(activePrepOrder.SelectedCakeSize) + ".";
-            return;
-        }
-
-        sizeFeedbackText.text = "La orden requiere un tamano especifico.";
+        sizeFeedbackText.text = "Revisa la receta: si eliges otro tamano, te pagaran menos.";
     }
 
     private void RefreshPlacementUi()
@@ -1938,7 +1948,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         bool hasActiveOrder = activePrepOrder != null;
-        bool placementAvailable = hasActiveOrder && activePrepOrder.SizeMatched;
+        bool placementAvailable = hasActiveOrder && IsSizeChosen(activePrepOrder);
         bool canEdit = placementAvailable && !activePrepOrder.PlacementCompleted;
         placementPieceView.SetInteractable(canEdit);
         placementConfirmButton.interactable = canEdit;
@@ -1964,12 +1974,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         if (activePrepOrder.PlacementCompleted)
         {
-            placementStatusText.text = "Objeto oculto correctamente dentro del pastel.";
+            placementStatusText.text = activePrepOrder.PlacementCorrect
+                ? "Objeto oculto correctamente dentro del pastel."
+                : "El objeto quedo mal colocado. Te pagaran menos por este pastel.";
             placementScoreText.text = "Precision: " + Mathf.RoundToInt(activePrepOrder.PlacementScore * 100f) + "%";
         }
-        else if (!activePrepOrder.SizeMatched)
+        else if (!IsSizeChosen(activePrepOrder))
         {
-            placementStatusText.text = "Primero debes elegir el tamano correcto.";
+            placementStatusText.text = "Primero elige el tamano del pastel.";
             placementScoreText.text = "Precision: 0%";
         }
         else
@@ -2030,13 +2042,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         bakeStatusText.text = "Estado: " + GetBakeResultLabel(activePrepOrder.BakeOutcome);
-        bakeActionButton.interactable = activePrepOrder.BakeOutcome != BakeResult.Perfect;
-        bakeButtonLabelText.text = activePrepOrder.BakeOutcome == BakeResult.Perfect ? "Horneado resuelto" : "Reintentar horneado";
+        bakeActionButton.interactable = false;
+        bakeButtonLabelText.text = "Horneado terminado";
         if (bakeHintText != null)
         {
             bakeHintText.text = activePrepOrder.BakeOutcome == BakeResult.Perfect
                 ? "Perfecto. Ya puedes pasar al topping."
-                : "Fallaste el punto. El area verde cambio de lugar para el siguiente intento.";
+                : "No quedo en su punto. Te pagaran menos por este pastel.";
         }
     }
 
@@ -2055,45 +2067,46 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         EnsureToppingOptions(activePrepOrder);
-        bool toppingAvailable = activePrepOrder.BakeOutcome == BakeResult.Perfect;
+        bool toppingAvailable = activePrepOrder.BakeOutcome != BakeResult.None && !activePrepOrder.BakeInProgress;
         SetToppingButtonsInteractable(toppingAvailable);
 
         for (int i = 0; i < toppingOptionButtons.Length; i++)
         {
+            string option = activePrepOrder.ToppingOptions != null && i < activePrepOrder.ToppingOptions.Length
+                ? activePrepOrder.ToppingOptions[i]
+                : null;
+
             if (toppingOptionLabelTexts != null && i < toppingOptionLabelTexts.Length && toppingOptionLabelTexts[i] != null)
             {
-                toppingOptionLabelTexts[i].text = activePrepOrder.ToppingOptions != null && i < activePrepOrder.ToppingOptions.Length
-                    ? activePrepOrder.ToppingOptions[i]
-                    : "--";
+                toppingOptionLabelTexts[i].text = option ?? "--";
+            }
+
+            if (toppingOptionCakeImages != null && i < toppingOptionCakeImages.Length && toppingOptionCakeImages[i] != null)
+            {
+                Sprite cakeIcon = GetToppingCakeIcon(option);
+                toppingOptionCakeImages[i].sprite = cakeIcon;
+                toppingOptionCakeImages[i].enabled = cakeIcon != null;
             }
 
             if (toppingOptionBackgrounds != null && i < toppingOptionBackgrounds.Length && toppingOptionBackgrounds[i] != null)
             {
-                bool isSelected = activePrepOrder.ToppingOptions != null
-                    && i < activePrepOrder.ToppingOptions.Length
-                    && string.Equals(activePrepOrder.SelectedTopping, activePrepOrder.ToppingOptions[i], StringComparison.OrdinalIgnoreCase);
-                toppingOptionBackgrounds[i].color = isSelected ? tabActiveColor : tabIdleColor;
+                bool isSelected = option != null && string.Equals(activePrepOrder.SelectedTopping, option, StringComparison.OrdinalIgnoreCase);
+                Sprite slotSprite = isSelected && toppingSelectedSlotSprite != null ? toppingSelectedSlotSprite : toppingSlotSprite;
+                if (slotSprite != null)
+                {
+                    toppingOptionBackgrounds[i].sprite = slotSprite;
+                    toppingOptionBackgrounds[i].color = Color.white;
+                }
+                else
+                {
+                    toppingOptionBackgrounds[i].color = isSelected ? tabActiveColor : tabIdleColor;
+                }
             }
         }
 
-        if (!toppingAvailable)
-        {
-            toppingFeedbackText.text = "Consigue un horneado perfecto antes de agregar el topping.";
-        }
-        else if (activePrepOrder.CakeGenerated)
-        {
-            toppingFeedbackText.text = "Pastel terminado y entregado al jugador.";
-        }
-        else if (activePrepOrder.SelectedTopping != null)
-        {
-            toppingFeedbackText.text = activePrepOrder.ToppingMatched
-                ? "Topping correcto. Genera el pastel."
-                : "Ese topping no coincide con la orden.";
-        }
-        else
-        {
-            toppingFeedbackText.text = "Elige el topping pedido por el preso.";
-        }
+        toppingFeedbackText.text = toppingAvailable
+            ? "Elige el topping pedido por el preso. El pastel ira a tu inventario."
+            : "Termina de hornear antes de agregar el topping.";
     }
 
     private void ActivateTab(int tabIndex, bool force)
@@ -2139,11 +2152,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             case 0:
                 return true;
             case 1:
-                return activePrepOrder.SizeMatched;
+                return IsSizeChosen(activePrepOrder);
             case 2:
                 return activePrepOrder.PlacementCompleted;
             case 3:
-                return activePrepOrder.BakeOutcome == BakeResult.Perfect;
+                return activePrepOrder.BakeOutcome != BakeResult.None;
             default:
                 return false;
         }
@@ -2156,7 +2169,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return 0;
         }
 
-        if (!order.SizeMatched)
+        if (!IsSizeChosen(order))
         {
             return 0;
         }
@@ -2166,7 +2179,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return 1;
         }
 
-        if (order.BakeOutcome != BakeResult.Perfect)
+        if (order.BakeOutcome == BakeResult.None)
         {
             return 2;
         }
@@ -2179,6 +2192,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (menuRoot != null)
         {
             menuRoot.SetActive(visible);
+        }
+
+        if (inventoryHud != null)
+        {
+            inventoryHud.SetMenuOpen(visible);
         }
 
         RefreshDetailPanel();
@@ -2279,14 +2297,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             order.BakeOutcome = BakeResult.Burnt;
         }
 
-        if (order.BakeOutcome != BakeResult.Perfect)
-        {
-            // Move the zone now, while the result is on screen, so it never jumps once the next attempt starts.
-            EnsurePerfectBakeWindow(order, true);
-        }
-
+        // Undercooked or burnt cakes still move on to the topping; the result only lowers the payout.
         RefreshAllUi();
-        ActivateTab(order.BakeOutcome == BakeResult.Perfect ? 3 : 2, true);
+        ActivateTab(3, true);
     }
 
     private void ConfigurePlacementRuntimeOrder(RuntimeOrder order)
@@ -2352,23 +2365,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return Mathf.Clamp01(distanceScore * 0.5f + rotationScore * 0.25f + scaleScore * 0.25f);
     }
 
-    private static string GetPlacementHint(float distance, float angleDelta, float scaleDelta)
-    {
-        if (distance > PlacementDistanceThreshold)
-        {
-            return "Aun no encaja. Acerca el objeto al centro de la sombra.";
-        }
-
-        if (angleDelta > PlacementAngleThreshold)
-        {
-            return "Aun no encaja. Gira el objeto para que coincida con la sombra.";
-        }
-
-        return scaleDelta > 0f
-            ? "Aun no encaja. El objeto es mas grande que la sombra."
-            : "Aun no encaja. El objeto es mas pequeno que la sombra.";
-    }
-
     private void EnsureToppingOptions(RuntimeOrder order)
     {
         if (order == null || order.ToppingOptions != null)
@@ -2399,79 +2395,53 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return 0;
         }
 
-        float placementMultiplier = Mathf.Lerp(0.7f, 1.25f, Mathf.Clamp01(order.PlacementScore));
-        float bakeMultiplier = 1f;
-        switch (order.BakeOutcome)
-        {
-            case BakeResult.Undercooked:
-                bakeMultiplier = 0.75f;
-                break;
-            case BakeResult.Perfect:
-                bakeMultiplier = 1.15f;
-                break;
-            case BakeResult.Burnt:
-                bakeMultiplier = 0.6f;
-                break;
-        }
+        float penalty = 0f;
+        if (!order.SizeMatched) penalty += wrongSizePenalty;
+        if (!order.PlacementCorrect) penalty += badPlacementPenalty;
+        if (order.BakeOutcome == BakeResult.Undercooked) penalty += undercookedPenalty;
+        if (order.BakeOutcome == BakeResult.Burnt) penalty += burntPenalty;
+        if (!order.ToppingMatched) penalty += wrongToppingPenalty;
 
-        return Mathf.RoundToInt(order.BasePayoutValue * placementMultiplier * bakeMultiplier);
+        return Mathf.Max(0, Mathf.RoundToInt(order.BasePayoutValue * (1f - Mathf.Clamp01(penalty))));
     }
 
-    private bool CreateAndHoldCake(RuntimeOrder order)
+    private static string GetFinishedCakeMessage(RuntimeOrder order)
+    {
+        List<string> mistakes = new List<string>();
+        if (!order.SizeMatched) mistakes.Add("tamano");
+        if (!order.PlacementCorrect) mistakes.Add("objeto");
+        if (order.BakeOutcome == BakeResult.Undercooked) mistakes.Add("crudo");
+        if (order.BakeOutcome == BakeResult.Burnt) mistakes.Add("quemado");
+        if (!order.ToppingMatched) mistakes.Add("topping");
+
+        string message = "Pastel para la celda #" + order.Data.cellNumber + " listo: Q" + order.FinalPayout;
+        return mistakes.Count == 0 ? message + ". Perfecto!" : message + " (errores: " + string.Join(", ", mistakes.ToArray()) + ")";
+    }
+
+    private bool AddCakeToInventory(RuntimeOrder order)
     {
         EnsurePlayerController();
-        if (playerController == null || playerController.HasHeldCake)
+        if (playerController == null)
         {
             return false;
         }
 
-        GameObject cakeObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        cakeObject.name = "CakePickup_" + order.Data.id;
-        cakeObject.transform.localScale = new Vector3(0.38f, 0.12f, 0.38f);
-
-        Renderer renderer = cakeObject.GetComponent<Renderer>();
-        if (renderer != null)
+        return playerController.Inventory.TryAdd(new CakeInventoryItem
         {
-            renderer.sharedMaterial = CreateCakeRuntimeMaterial(GetCakeColorFromTopping(order.SelectedTopping));
-        }
-
-        CakePickup cakePickup = cakeObject.AddComponent<CakePickup>();
-        cakePickup.Initialize(order.Data.id, order.Data.orderTitle, CalculateFinalPayout(order));
-        return playerController.TryHoldCake(cakePickup);
+            orderId = order.Data.id,
+            orderTitle = order.Data.orderTitle,
+            cellNumber = order.Data.cellNumber,
+            payoutValue = order.FinalPayout,
+            icon = GetToppingCakeIcon(order.SelectedTopping)
+        });
     }
 
-    private static Material CreateCakeRuntimeMaterial(Color cakeColor)
+    public void ShowInventoryMessage(string message)
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-        if (shader == null)
+        if (inventoryHud != null)
         {
-            shader = Shader.Find("Universal Render Pipeline/Unlit");
+            inventoryHud.ShowMessage(message);
         }
-
-        if (shader == null)
-        {
-            shader = Shader.Find("Sprites/Default");
-        }
-
-        if (shader == null)
-        {
-            shader = Shader.Find("Unlit/Color");
-        }
-
-        Material material = shader != null
-            ? new Material(shader)
-            : new Material(Shader.Find("Standard"));
-
-        if (material.HasProperty("_BaseColor"))
-        {
-            material.SetColor("_BaseColor", cakeColor);
-        }
-        else if (material.HasProperty("_Color"))
-        {
-            material.SetColor("_Color", cakeColor);
-        }
-
-        return material;
     }
 
     private void SetToppingButtonsInteractable(bool interactable)
@@ -2595,7 +2565,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 return "Lista para hornear";
             }
 
-            if (order.SizeMatched)
+            if (IsSizeChosen(order))
             {
                 return "Esperando objeto";
             }
@@ -2668,52 +2638,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return new Color(0.95f, 0.87f, 0.72f, 1f);
     }
 
-    private static Color GetCakeColorFromTopping(string toppingName)
-    {
-        if (string.IsNullOrEmpty(toppingName))
-        {
-            return new Color(0.95f, 0.87f, 0.72f, 1f);
-        }
-
-        string normalized = toppingName.Trim().ToLowerInvariant();
-        if (normalized.Contains("crema"))
-        {
-            return new Color(0.96f, 0.92f, 0.82f, 1f);
-        }
-
-        if (normalized.Contains("choco"))
-        {
-            return new Color(0.46f, 0.28f, 0.16f, 1f);
-        }
-
-        if (normalized.Contains("mora"))
-        {
-            return new Color(0.58f, 0.42f, 0.76f, 1f);
-        }
-
-        if (normalized.Contains("fresa"))
-        {
-            return new Color(0.92f, 0.56f, 0.66f, 1f);
-        }
-
-        if (normalized.Contains("glaseado"))
-        {
-            return new Color(0.90f, 0.90f, 0.94f, 1f);
-        }
-
-        if (normalized.Contains("azucar"))
-        {
-            return new Color(0.97f, 0.97f, 0.97f, 1f);
-        }
-
-        if (normalized.Contains("caramelo"))
-        {
-            return new Color(0.76f, 0.55f, 0.28f, 1f);
-        }
-
-        return new Color(0.95f, 0.87f, 0.72f, 1f);
-    }
-
     private void BuildResultsMenu()
     {
         if (resultsMenuRoot != null || rootCanvas == null)
@@ -2772,7 +2696,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Text body = CreateText(
             "ControlsPopupBody",
             panel.transform,
-            "- Utiliza Space para interactuar con tu estacion de cocina, tomar objetos o tomar las ordenes de los prisioneros\n\n- Si tienes las manos ocupadas, puedes utilizar E para interactuar.",
+            "- Utiliza Space o E para interactuar con tu estacion de cocina y con los prisioneros.\n\n- Los pasteles terminados van a tu inventario. Elige uno con las teclas 1-5 o la rueda del mouse y habla con el preso de esa celda para entregarlo.",
             24,
             FontStyle.Bold,
             TextAnchor.MiddleLeft);

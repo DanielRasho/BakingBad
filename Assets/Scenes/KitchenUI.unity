@@ -3962,6 +3962,7 @@ GameObject:
   - component: {fileID: 1495665889}
   - component: {fileID: 1495665893}
   - component: {fileID: 1495665894}
+  - component: {fileID: 1495665895}
   m_Layer: 0
   m_Name: HUDRoot
   m_TagString: Untagged
@@ -4121,6 +4122,29 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: 013588a36a866d945ac11cb86626db2e, type: 3}
   - itemName: Desarmador
     icon: {fileID: 21300000, guid: 16ec8283fe2602944be2c04ad1ef57dd, type: 3}
+  toppingCakeIcons:
+  - itemName: Crema
+    icon: {fileID: 21300000, guid: 35911f2c21f866c47b2a8e6c452c045c, type: 3}
+  - itemName: Fresa
+    icon: {fileID: 21300000, guid: 040203f483d421d4481498b9d8fadde4, type: 3}
+  - itemName: Chocolate
+    icon: {fileID: 21300000, guid: 58dc178ec5c14c941ac1f7ee4f507290, type: 3}
+  - itemName: Mora
+    icon: {fileID: 21300000, guid: 2d3ee23058e25164593b5dbab40e9de6, type: 3}
+  - itemName: Glaseado
+    icon: {fileID: 21300000, guid: 03c066a62f0e3384dbc8fc328dcec657, type: 3}
+  - itemName: Caramelo
+    icon: {fileID: 21300000, guid: 9790e838d5112934a8a8367a554ee436, type: 3}
+  - itemName: Azucar glass
+    icon: {fileID: 21300000, guid: b2db28a3f53116847b30237174db34cf, type: 3}
+  toppingSlotSprite: {fileID: 21300000, guid: 5f7187aafb1ee5d40b946a77b22dbf5a, type: 3}
+  toppingSelectedSlotSprite: {fileID: 21300000, guid: 44d00688808f6524a972b4df5878a9c6, type: 3}
+  inventoryHud: {fileID: 1495665895}
+  wrongSizePenalty: 0.2
+  badPlacementPenalty: 0.2
+  undercookedPenalty: 0.2
+  burntPenalty: 0.3
+  wrongToppingPenalty: 0.2
   placementIconButtonSprite: {fileID: 21300000, guid: 69860b5c89cd9d04fb056f3b559d069d, type: 3}
   placementConfirmButtonSprite: {fileID: 21300000, guid: 1f0b376ccf288f242b20382496e340eb, type: 3}
   totalMoneyText: {fileID: 0}
@@ -4147,6 +4171,26 @@ MonoBehaviour:
   playerController: {fileID: 0}
   prepMenuController: {fileID: 0}
   mainMenuSceneName: MainMenu
+--- !u!114 &1495665895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1495665888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 790e944fa46b45d4bb9a32e00512ef49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CakeInventoryHud
+  hotbarSprite: {fileID: 21300000, guid: ab31c4bb878879049b7a3a6cf7404c21, type: 3}
+  slotSprite: {fileID: 21300000, guid: 5f7187aafb1ee5d40b946a77b22dbf5a, type: 3}
+  selectedSlotSprite: {fileID: 21300000, guid: 44d00688808f6524a972b4df5878a9c6, type: 3}
+  font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
+  slotSize: {x: 96, y: 104}
+  slotSpacing: 14
+  bottomMargin: 16
+  messageSeconds: 3
 --- !u!1 &1508512060
 GameObject:
   m_ObjectHideFlags: 0

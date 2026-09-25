@@ -12662,7 +12662,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 665936261}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: -0, w: 0.7071068}
+  m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 10, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -23401,18 +23401,6 @@ MonoBehaviour:
     m_Bits: 4294967295
   interactionScanInterval: 0.08
   logInteractions: 1
-  carryAnchor: {fileID: 0}
-  carryAnchorLocalPosition: {x: 0, y: 0.95, z: -0.28}
-  pickupLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  pickupRange: 0.65
-  pickupHeight: 0.18
-  pickupRadius: 0.55
-  dropOffset: {x: 0, y: 0.12, z: 0}
-  dropForwardDistance: 0.7
-  dropRayHeight: 2
-  dropRayDistance: 4
 --- !u!143 &1282066330
 CharacterController:
   m_ObjectHideFlags: 0
@@ -32740,6 +32728,7 @@ MonoBehaviour:
   orderUi: {fileID: 0}
   dayDurationSeconds: 600
   prisonerOrderCooldownSeconds: 15
+  wrongDeliveryPenalty: 10
   prisonerVisualSource: {fileID: 1282066328}
   prisonerVisualOffset: {x: 0, y: 0, z: 0}
   prisonerColliderCenter: {x: 0, y: 0.75, z: 0}
@@ -34172,6 +34161,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1901080506}
+  - component: {fileID: 1901080507}
   m_Layer: 0
   m_Name: Minimap
   m_TagString: Untagged
@@ -34215,6 +34205,28 @@ Transform:
   - {fileID: 189028874}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1901080507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1901080505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 820f714293cead6408ad22301e3a0244, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MinimapCellLabels
+  cellsRoot: {fileID: 518749480}
+  minimapCamera: {fileID: 665936264}
+  font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
+  minimapLayerName: Minimap
+  labelHeight: 4.8
+  characterSize: 0.22
+  fontSize: 60
+  maxSnapDistance: 4
+  textColor: {r: 0.3, g: 0.16, b: 0.11, a: 1}
+  shadowColor: {r: 1, g: 0.97, b: 0.9, a: 0.9}
 --- !u!1001 &1902743143
 PrefabInstance:
   m_ObjectHideFlags: 0

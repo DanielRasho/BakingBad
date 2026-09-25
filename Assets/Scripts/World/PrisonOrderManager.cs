@@ -27,6 +27,10 @@ public class PrisonOrderManager : MonoBehaviour
     [SerializeField] private float dayDurationSeconds = 600f;
     [SerializeField] private float prisonerOrderCooldownSeconds = 15f;
 
+    [Header("Delivery")]
+    [Tooltip("Money lost when the selected cake belongs to a different cell. Money never goes below zero.")]
+    [SerializeField] private int wrongDeliveryPenalty = 10;
+
     [Header("Prisoners")]
     [SerializeField] private Transform prisonerVisualSource;
     [SerializeField] private Vector3 prisonerVisualOffset = Vector3.zero;
@@ -116,30 +120,45 @@ public class PrisonOrderManager : MonoBehaviour
             return false;
         }
 
-        CakePickup cake;
-        if (!interactingPlayer.TryDeliverHeldCake(prisoner.CurrentOrderId, out cake))
+        CakeInventory inventory = interactingPlayer.Inventory;
+        CakeInventoryItem cake = inventory != null ? inventory.SelectedItem : null;
+        if (cake == null)
         {
-            if (interactingPlayer.HasHeldCake && logOrderFlow)
+            ShowInventoryMessage("Selecciona en el inventario el pastel para " + prisoner.CellLabel + ".");
+            return true;
+        }
+
+        if (cake.orderId != prisoner.CurrentOrderId)
+        {
+            // The prisoner refuses it, so the cake stays in the inventory but the mistake still costs money.
+            int penalty = Mathf.Min(wrongDeliveryPenalty, earnedMoney);
+            earnedMoney -= penalty;
+            if (orderUi != null)
+            {
+                orderUi.SetMoney(earnedMoney);
+            }
+
+            ShowInventoryMessage("Ese pastel es de la celda #" + cake.cellNumber + ". -Q" + penalty);
+            if (logOrderFlow)
             {
                 Debug.Log("Delivery rejected at " + prisoner.CellLabel + ": wrong cake for order " + prisoner.CurrentOrderId + ".");
             }
 
-            return false;
+            return true;
         }
 
-        int payout = cake != null ? cake.PayoutValue : 0;
+        inventory.RemoveSelected();
+        int payout = cake.payoutValue;
         earnedMoney += payout;
         deliveredOrders++;
-        if (cake != null)
-        {
-            Destroy(cake.gameObject);
-        }
 
         if (orderUi != null)
         {
             orderUi.RemoveOrder(prisoner.CurrentOrderId);
             orderUi.SetMoney(earnedMoney);
         }
+
+        ShowInventoryMessage("Pastel entregado a " + prisoner.CellLabel + ". +Q" + payout);
 
         prisoner.MarkDelivered(prisonerOrderCooldownSeconds);
         RefreshMapIfVisible();
@@ -209,6 +228,14 @@ public class PrisonOrderManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    private void ShowInventoryMessage(string message)
+    {
+        if (orderUi != null)
+        {
+            orderUi.ShowInventoryMessage(message);
+        }
     }
 
     private void UpdateDayTimer()

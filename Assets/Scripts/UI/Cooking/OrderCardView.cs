@@ -45,6 +45,7 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
     private bool isPressHeld;
     private bool startedPressOnCard;
     private string orderId;
+    private GameObject preparingOverlay;
     private Vector2 pressStartScreenPosition;
     private const float DragThresholdPixels = 8f;
 
@@ -328,6 +329,61 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
         {
             spriteFrame.color = isInteractable ? Color.white : new Color(0.93f, 0.93f, 0.93f, 1f);
         }
+
+        bool showPreparing = isActive && !isCompleted;
+        if (showPreparing && preparingOverlay == null)
+        {
+            BuildPreparingOverlay();
+        }
+
+        if (preparingOverlay != null)
+        {
+            preparingOverlay.SetActive(showPreparing);
+        }
+    }
+
+    // Dark veil in the card's own shape so an order in progress can't be mistaken for a new one.
+    private void BuildPreparingOverlay()
+    {
+        GameObject overlay = new GameObject("PreparingOverlay", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        RectTransform overlayRect = overlay.GetComponent<RectTransform>();
+        overlayRect.SetParent(transform, false);
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+        overlayRect.SetAsLastSibling();
+
+        Image veil = overlay.GetComponent<Image>();
+        veil.color = new Color(0f, 0f, 0f, 0.78f);
+        veil.raycastTarget = false;
+        if (cardBackground != null)
+        {
+            veil.sprite = cardBackground.sprite;
+            veil.type = cardBackground.type;
+        }
+
+        GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.SetParent(overlayRect, false);
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        // The dots on their own line let "Preparando" use a larger size on the narrow card.
+        Text label = labelObject.GetComponent<Text>();
+        label.text = "Preparando\n...";
+        label.font = cellText != null ? cellText.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        label.fontSize = 17;
+        label.lineSpacing = 0.9f;
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
+        label.verticalOverflow = VerticalWrapMode.Overflow;
+        label.alignment = TextAnchor.MiddleCenter;
+        label.color = Color.white;
+        label.raycastTarget = false;
+
+        preparingOverlay = overlay;
     }
 
     private void BeginDragInternal()
