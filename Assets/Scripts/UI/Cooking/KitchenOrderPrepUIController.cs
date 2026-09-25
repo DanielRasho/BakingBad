@@ -173,9 +173,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private Text detailStatusText;
 
+    private GameObject stageTabPanelsRoot;
+    private GameObject tabBarRoot;
+    private Text waitingOrderText;
+
     private Button[] sizeOptionButtons;
     private Image[] sizeOptionBackgrounds;
     private Text sizeFeedbackText;
+    private static Sprite cakeSizeCylinderSprite;
 
     private RectTransform placementPlayArea;
     private RectTransform placementTargetRect;
@@ -534,6 +539,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         HidePrepareButton();
         HideRuntimeDetailStatus();
         BuildRuntimeTabContent();
+        BuildWaitingOrderState();
         BuildResultsMenu();
         BuildMapOverlay();
         BuildControlsPopup();
@@ -898,6 +904,46 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         BuildToppingTab(tabPanels[3].GetComponent<RectTransform>());
     }
 
+    private void BuildWaitingOrderState()
+    {
+        if (tabPanels != null && tabPanels.Length > 0 && tabPanels[0] != null && tabPanels[0].transform.parent != null)
+        {
+            stageTabPanelsRoot = tabPanels[0].transform.parent.gameObject;
+        }
+
+        if (tabButtons != null && tabButtons.Length > 0 && tabButtons[0] != null && tabButtons[0].transform.parent != null)
+        {
+            tabBarRoot = tabButtons[0].transform.parent.gameObject;
+        }
+
+        Transform stagePanel = stageTabPanelsRoot != null ? stageTabPanelsRoot.transform.parent : null;
+        if (stagePanel == null)
+        {
+            return;
+        }
+
+        Transform existing = stagePanel.Find("WaitingOrderText");
+        if (existing != null)
+        {
+            waitingOrderText = existing.GetComponent<Text>();
+            return;
+        }
+
+        waitingOrderText = CreateText("WaitingOrderText", stagePanel, "Esperando orden para iniciar...", 44, FontStyle.Normal, TextAnchor.MiddleCenter);
+        waitingOrderText.color = new Color(0.38f, 0.37f, 0.36f, 1f);
+        SetRect(waitingOrderText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-120f, -120f), new Vector2(0.5f, 0.5f));
+    }
+
+    private void RefreshStageVisibility()
+    {
+        bool hasActiveOrder = activePrepOrder != null && activePrepOrder.State == OrderRuntimeState.ActivePrep;
+
+        if (stageTabPanelsRoot != null) stageTabPanelsRoot.SetActive(hasActiveOrder);
+        if (tabBarRoot != null) tabBarRoot.SetActive(hasActiveOrder);
+        if (centerStageTitle != null) centerStageTitle.gameObject.SetActive(hasActiveOrder);
+        if (waitingOrderText != null) waitingOrderText.gameObject.SetActive(!hasActiveOrder);
+    }
+
     private void BuildSizeTab(RectTransform panel)
     {
         if (panel == null)
@@ -912,17 +958,21 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         sizeOptionButtons = new Button[3];
         sizeOptionBackgrounds = new Image[3];
         float[] xPositions = { -220f, 0f, 220f };
+        float[] cylinderWidths = { 60f, 88f, 120f };
+        Sprite cylinderSprite = GetCakeSizeCylinderSprite();
+        float cylinderAspect = cylinderSprite.rect.height / cylinderSprite.rect.width;
         for (int i = 0; i < 3; i++)
         {
             Button button = CreateButton("SizeOption_" + CakeSizeLabels[i], panel, new Color(0.97f, 0.96f, 0.93f, 1f));
             RectTransform buttonRect = button.GetComponent<RectTransform>();
             SetRect(buttonRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(xPositions[i], -10f), new Vector2(180f, 220f), new Vector2(0.5f, 0.5f));
 
-            Image placeholder = CreateImage("SpritePlaceholder", buttonRect, Color.white);
-            SetRect(placeholder.rectTransform, new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, new Vector2(92f, 92f), new Vector2(0.5f, 0.5f));
-            Outline outline = placeholder.gameObject.AddComponent<Outline>();
-            outline.effectColor = Color.black;
-            outline.effectDistance = new Vector2(1f, -1f);
+            // Cylinders share a baseline so the three sizes read as a comparison.
+            Image cylinder = CreateImage("CakeSizeCylinder", buttonRect, Color.white);
+            cylinder.sprite = cylinderSprite;
+            cylinder.preserveAspect = true;
+            cylinder.raycastTarget = false;
+            SetRect(cylinder.rectTransform, new Vector2(0.5f, 0.45f), new Vector2(0.5f, 0.45f), Vector2.zero, new Vector2(cylinderWidths[i], cylinderWidths[i] * cylinderAspect), new Vector2(0.5f, 0f));
 
             Text label = CreateText("SizeLabel", buttonRect, CakeSizeLabels[i], 24, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(label.rectTransform, new Vector2(0.5f, 0.3f), new Vector2(0.5f, 0.3f), Vector2.zero, new Vector2(150f, 50f), new Vector2(0.5f, 0.5f));
@@ -1489,6 +1539,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     {
         RefreshCardStates();
         RefreshDetailPanel();
+        RefreshStageVisibility();
         RefreshTabAvailability();
         RefreshSizeTab();
         RefreshPlacementUi();
@@ -2719,6 +2770,108 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return image;
     }
 
+    private static Sprite GetCakeSizeCylinderSprite()
+    {
+        if (cakeSizeCylinderSprite != null)
+        {
+            return cakeSizeCylinderSprite;
+        }
+
+        const int width = 128;
+        const int height = 112;
+        const int subSamples = 4;
+        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        texture.name = "CakeSizeCylinder";
+        texture.filterMode = FilterMode.Bilinear;
+        texture.wrapMode = TextureWrapMode.Clamp;
+
+        Color[] pixels = new Color[width * height];
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                Color accumulated = Color.clear;
+                for (int sy = 0; sy < subSamples; sy++)
+                {
+                    for (int sx = 0; sx < subSamples; sx++)
+                    {
+                        Color sample = SampleCylinder(x + (sx + 0.5f) / subSamples, y + (sy + 0.5f) / subSamples, width, height);
+                        accumulated += new Color(sample.r * sample.a, sample.g * sample.a, sample.b * sample.a, sample.a);
+                    }
+                }
+
+                accumulated /= subSamples * subSamples;
+                pixels[y * width + x] = accumulated.a > 0f
+                    ? new Color(accumulated.r / accumulated.a, accumulated.g / accumulated.a, accumulated.b / accumulated.a, accumulated.a)
+                    : Color.clear;
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply(false, true);
+        cakeSizeCylinderSprite = Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0f), 100f);
+        cakeSizeCylinderSprite.name = "CakeSizeCylinder";
+        return cakeSizeCylinderSprite;
+    }
+
+    private static Color SampleCylinder(float px, float py, int width, int height)
+    {
+        const float margin = 3f;
+        const float outlineWidth = 3f;
+        float radiusX = width * 0.5f - margin;
+        float radiusY = radiusX * 0.28f;
+        float centerX = width * 0.5f;
+        float topY = height - margin - radiusY;
+        float bottomY = margin + radiusY;
+
+        float dx = px - centerX;
+        if (Mathf.Abs(dx) > radiusX)
+        {
+            return Color.clear;
+        }
+
+        float topDistance = EllipseEdgeDistance(dx, py - topY, radiusX, radiusY);
+        float bottomDistance = EllipseEdgeDistance(dx, py - bottomY, radiusX, radiusY);
+        bool insideTop = topDistance <= 0f;
+        bool insideBody = py >= bottomY && py <= topY;
+        bool insideBottom = bottomDistance <= 0f;
+        if (!insideTop && !insideBody && !insideBottom)
+        {
+            return Color.clear;
+        }
+
+        Color outlineColor = new Color(0.20f, 0.20f, 0.22f, 1f);
+        bool onSide = radiusX - Mathf.Abs(dx) < outlineWidth;
+        bool onTopRim = insideTop && topDistance > -outlineWidth;
+        bool onBottomRim = py < bottomY && bottomDistance > -outlineWidth;
+        if (onSide || onTopRim || onBottomRim)
+        {
+            return outlineColor;
+        }
+
+        if (insideTop)
+        {
+            float highlight = Mathf.Clamp01(1f - Mathf.Abs(py - topY) / radiusY) * 0.05f;
+            float value = 0.84f + highlight;
+            return new Color(value, value, value + 0.02f, 1f);
+        }
+
+        // Light comes from the upper left, so the body brightens left of center.
+        float normalizedX = dx / radiusX;
+        float lit = Mathf.Sqrt(Mathf.Clamp01(1f - (normalizedX + 0.35f) * (normalizedX + 0.35f) / 1.8225f));
+        float bodyValue = Mathf.Lerp(0.40f, 0.72f, lit);
+        return new Color(bodyValue, bodyValue, bodyValue + 0.02f, 1f);
+    }
+
+    private static float EllipseEdgeDistance(float dx, float dy, float radiusX, float radiusY)
+    {
+        float value = (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY) - 1f;
+        float gradientX = 2f * dx / (radiusX * radiusX);
+        float gradientY = 2f * dy / (radiusY * radiusY);
+        float gradientLength = Mathf.Sqrt(gradientX * gradientX + gradientY * gradientY);
+        return gradientLength > 0.0001f ? value / gradientLength : -Mathf.Min(radiusX, radiusY);
+    }
+
     private Text CreateText(string objectName, Transform parent, string content, int fontSize, FontStyle fontStyle, TextAnchor anchor)
     {
         GameObject gameObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
@@ -2729,6 +2882,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         text.fontSize = fontSize;
         text.fontStyle = fontStyle;
         text.alignment = anchor;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = Mathf.Max(10, fontSize - 10);
+        text.resizeTextMaxSize = fontSize;
         text.text = content;
         text.color = Color.black;
         text.raycastTarget = false;
