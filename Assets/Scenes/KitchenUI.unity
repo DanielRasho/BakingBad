@@ -2351,7 +2351,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &889386711
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2578,8 +2578,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 7, y: -223.3}
-  m_SizeDelta: {x: -54, y: 64}
+  m_AnchoredPosition: {x: 7, y: -280}
+  m_SizeDelta: {x: -54, y: 158}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &954376843
 CanvasRenderer:
@@ -2611,17 +2611,17 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
-    m_FontSize: 30
+    m_FontSize: 26
     m_FontStyle: 0
-    m_BestFit: 0
-    m_MinSize: 0
-    m_MaxSize: 40
+    m_BestFit: 1
+    m_MinSize: 16
+    m_MaxSize: 26
     m_Alignment: 0
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
-    m_VerticalOverflow: 1
-    m_LineSpacing: 1
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1.15
   m_Text: 'Color de pastel: Rosa'
 --- !u!1 &1029491237
 GameObject:
@@ -4104,6 +4104,23 @@ MonoBehaviour:
   detailCellText: {fileID: 234263203}
   dragHintOverlay: {fileID: 213408077}
   dragHintPointer: {fileID: 1959936426}
+  contrabandIcons:
+  - itemName: Cepillo de dientes
+    icon: {fileID: 21300000, guid: d2a036e25a7707847a2d9124ff33038d, type: 3}
+  - itemName: Gato
+    icon: {fileID: 21300000, guid: 48786735b02048c4a8054e81b9880b93, type: 3}
+  - itemName: Lima para rejas
+    icon: {fileID: 21300000, guid: 7789dac3ce8d00e45a75424614b2cfba, type: 3}
+  - itemName: Navaja suiza
+    icon: {fileID: 21300000, guid: f2dbde5fa1585f74dbe9aedf5d730050, type: 3}
+  - itemName: Llave inglesa
+    icon: {fileID: 21300000, guid: 449b56a52d1290f41b43b28d89fec656, type: 3}
+  - itemName: Telefono
+    icon: {fileID: 21300000, guid: 8041f20db0f15dd47a1e186e6bfed14e, type: 3}
+  - itemName: Martillo
+    icon: {fileID: 21300000, guid: 013588a36a866d945ac11cb86626db2e, type: 3}
+  - itemName: Desarmador
+    icon: {fileID: 21300000, guid: 16ec8283fe2602944be2c04ad1ef57dd, type: 3}
   totalMoneyText: {fileID: 0}
   timerText: {fileID: 0}
   tabIdleColor: {r: 0.97, g: 0.96, b: 0.93, a: 1}
@@ -4513,8 +4530,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -447}
-  m_SizeDelta: {x: 98, y: 60}
+  m_AnchoredPosition: {x: 0, y: -405}
+  m_SizeDelta: {x: 130, y: 72}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1617838903
 MonoBehaviour:
@@ -4871,8 +4888,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -99}
-  m_SizeDelta: {x: -40, y: 62}
+  m_AnchoredPosition: {x: 0, y: -90}
+  m_SizeDelta: {x: -60, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1746334520
 CanvasRenderer:
@@ -4904,17 +4921,17 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
-    m_FontSize: 40
+    m_FontSize: 34
     m_FontStyle: 1
-    m_BestFit: 0
-    m_MinSize: 4
-    m_MaxSize: 40
+    m_BestFit: 1
+    m_MinSize: 18
+    m_MaxSize: 34
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
-    m_VerticalOverflow: 1
-    m_LineSpacing: 1
+    m_VerticalOverflow: 0
+    m_LineSpacing: 0.9
   m_Text: Pastel de fresas con crema
 --- !u!1 &1780578046
 GameObject:
@@ -5527,8 +5544,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 2, y: -392}
-  m_SizeDelta: {x: -44, y: 70}
+  m_AnchoredPosition: {x: 2, y: -382}
+  m_SizeDelta: {x: -60, y: 34}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1928729779
 CanvasRenderer:
@@ -5560,16 +5577,16 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
-    m_FontSize: 35
+    m_FontSize: 24
     m_FontStyle: 1
-    m_BestFit: 0
-    m_MinSize: 3
-    m_MaxSize: 40
+    m_BestFit: 1
+    m_MinSize: 16
+    m_MaxSize: 24
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
-    m_VerticalOverflow: 1
+    m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: 'Objeto a colocar: Fresa'
 --- !u!1 &1954883926

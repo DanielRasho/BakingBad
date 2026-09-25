@@ -25,6 +25,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     }
 
     [Serializable]
+    public class ContrabandIconEntry
+    {
+        public string itemName;
+        public Sprite icon;
+    }
+
+    [Serializable]
     private class OrderDefinitionCollection
     {
         public OrderDefinition[] orders;
@@ -122,6 +129,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private Text detailCellText;
     [SerializeField] private GameObject dragHintOverlay;
     [SerializeField] private RectTransform dragHintPointer;
+    [Tooltip("Icon shown in the recipe card for each contrabandItem name in the orders JSON.")]
+    [SerializeField] private ContrabandIconEntry[] contrabandIcons;
 
     [Header("Board Summary")]
     [SerializeField] private Text totalMoneyText;
@@ -172,6 +181,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private bool controlsPopupLockHeld;
 
     private Text detailStatusText;
+    private RectTransform detailItemFrame;
+    private Image detailItemIcon;
+    private Text detailItemPlaceholderText;
 
     private GameObject stageTabPanelsRoot;
     private GameObject tabBarRoot;
@@ -333,6 +345,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             ConfigureCardTransform(cardView.GetComponent<RectTransform>(), spawnedOrders.Count);
             cardView.Initialize(this, runtimeOrder.Data);
             runtimeOrder.CardView = cardView;
+            SetCardItemIcon(runtimeOrder);
             spawnedOrders.Add(runtimeOrder);
         }
 
@@ -538,6 +551,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         WireButtons();
         HidePrepareButton();
         HideRuntimeDetailStatus();
+        BuildDetailItemIcon();
         BuildRuntimeTabContent();
         BuildWaitingOrderState();
         BuildResultsMenu();
@@ -806,6 +820,95 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         detailStatusText.text = string.Empty;
         detailStatusText.gameObject.SetActive(false);
+    }
+
+    private void BuildDetailItemIcon()
+    {
+        if (detailPanel == null)
+        {
+            return;
+        }
+
+        detailItemFrame = FindDeepChild(detailPanel.transform, "ItemFrame") as RectTransform;
+        if (detailItemFrame == null)
+        {
+            return;
+        }
+
+        Transform placeholder = FindDeepChild(detailItemFrame, "ItemPlaceholder");
+        detailItemPlaceholderText = placeholder != null ? placeholder.GetComponent<Text>() : null;
+
+        Transform existing = detailItemFrame.Find("ItemIcon");
+        if (existing != null)
+        {
+            detailItemIcon = existing.GetComponent<Image>();
+            return;
+        }
+
+        detailItemIcon = CreateImage("ItemIcon", detailItemFrame, Color.white);
+        detailItemIcon.preserveAspect = true;
+        detailItemIcon.raycastTarget = false;
+        detailItemIcon.gameObject.SetActive(false);
+    }
+
+    private void RefreshDetailItemIcon(string contrabandItem)
+    {
+        if (detailItemIcon == null || detailItemFrame == null)
+        {
+            return;
+        }
+
+        Sprite icon = GetContrabandIcon(contrabandItem);
+        detailItemIcon.gameObject.SetActive(icon != null);
+        if (detailItemPlaceholderText != null)
+        {
+            detailItemPlaceholderText.gameObject.SetActive(icon == null);
+        }
+
+        if (icon == null)
+        {
+            return;
+        }
+
+        detailItemIcon.sprite = icon;
+        const float padding = 16f;
+        SetRect(detailItemIcon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        FitIconInBox(detailItemIcon.rectTransform, icon, detailItemFrame.rect.size - new Vector2(padding, padding));
+    }
+
+    public static void FitIconInBox(RectTransform iconRect, Sprite icon, Vector2 box)
+    {
+        // Tall tools (screwdriver, file...) lie down so they use a wide box instead of shrinking to a sliver.
+        bool lieDown = icon.rect.height > icon.rect.width * 1.3f && box.x > box.y;
+        iconRect.sizeDelta = lieDown ? new Vector2(box.y, box.x) : box;
+        iconRect.localRotation = Quaternion.Euler(0f, 0f, lieDown ? -90f : 0f);
+    }
+
+    private void SetCardItemIcon(RuntimeOrder runtimeOrder)
+    {
+        if (runtimeOrder.CardView != null && runtimeOrder.Data != null)
+        {
+            runtimeOrder.CardView.SetItemIcon(GetContrabandIcon(runtimeOrder.Data.contrabandItem));
+        }
+    }
+
+    private Sprite GetContrabandIcon(string contrabandItem)
+    {
+        if (contrabandIcons == null || string.IsNullOrEmpty(contrabandItem))
+        {
+            return null;
+        }
+
+        for (int i = 0; i < contrabandIcons.Length; i++)
+        {
+            ContrabandIconEntry entry = contrabandIcons[i];
+            if (entry != null && entry.icon != null && string.Equals(entry.itemName, contrabandItem, StringComparison.OrdinalIgnoreCase))
+            {
+                return entry.icon;
+            }
+        }
+
+        return null;
     }
 
     private void NormalizeDetailPanelLayout()
@@ -1230,6 +1333,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         ConfigureCardTransform(cardView.GetComponent<RectTransform>(), spawnedOrders.Count);
         cardView.Initialize(this, runtimeOrder.Data);
         runtimeOrder.CardView = cardView;
+        SetCardItemIcon(runtimeOrder);
         spawnedOrders.Add(runtimeOrder);
 
         if (logOrderBoard)
@@ -1587,6 +1691,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             if (detailPayoutText != null) detailPayoutText.text = string.Empty;
             if (detailCellText != null) detailCellText.text = string.Empty;
             if (detailStatusText != null) detailStatusText.text = string.Empty;
+            RefreshDetailItemIcon(null);
             if (dragHintOverlay != null) dragHintOverlay.SetActive(true);
             StartDragHintPulse();
             return;
@@ -1597,9 +1702,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         OrderDefinition order = selectedOrder.Data;
         if (detailTitleText != null) detailTitleText.text = order.orderTitle;
-        if (detailCakeColorText != null) detailCakeColorText.text = "Color de pastel: " + order.cakeColor + "\nTamano: " + GetCakeSizeLabel(selectedOrder.RequiredCakeSize);
-        if (detailToppingText != null) detailToppingText.text = "Topping: " + order.topping;
-        if (detailItemLabelText != null) detailItemLabelText.text = "Objeto a colocar: " + order.contrabandItem;
+        // The whole recipe lives in one text block so a wrapped long value pushes the next line down instead of overlapping it.
+        if (detailCakeColorText != null) detailCakeColorText.text = "Color de pastel: " + order.cakeColor + "\nTamano: " + GetCakeSizeLabel(selectedOrder.RequiredCakeSize) + "\nTopping: " + order.topping;
+        if (detailToppingText != null) detailToppingText.text = string.Empty;
+        if (detailItemLabelText != null) detailItemLabelText.text = "Objeto a colocar:";
+        RefreshDetailItemIcon(order.contrabandItem);
         if (detailPayoutText != null) detailPayoutText.text = "Paga: Q" + GetDisplayPayout(selectedOrder);
         if (detailCellText != null) detailCellText.text = "Celda: " + order.cellNumber;
         if (detailStatusText != null)

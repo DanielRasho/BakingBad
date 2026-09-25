@@ -373,6 +373,15 @@ public class PrisonOrderManager : MonoBehaviour
             collider.isTrigger = true;
             collider.center = prisonerColliderCenter;
             collider.size = prisonerColliderSize;
+
+            PrisonerInteractable prisoner = prisonerObject.GetComponent<PrisonerInteractable>();
+            if (prisoner == null)
+            {
+                prisoner = prisonerObject.AddComponent<PrisonerInteractable>();
+            }
+
+            prisoner.Initialize(this, cellPoint.name, GetCellLabel(cellPoint.name));
+            prisoners.Add(prisoner);
         }
     }
 
@@ -382,7 +391,7 @@ public class PrisonOrderManager : MonoBehaviour
         return new KitchenOrderPrepUIController.OrderDefinition
         {
             id = orderId,
-            cellNumber = prisoner.CellLabel,
+            cellNumber = prisoner.CellLabel.Replace("Celda ", string.Empty),
             payout = source.payout,
             basePayout = source.basePayout,
             orderTitle = source.orderTitle,

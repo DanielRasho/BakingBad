@@ -18,6 +18,7 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
     [SerializeField] private Text payoutText;
     [SerializeField] private Text statusText;
     [SerializeField] private Image spriteFrame;
+    [SerializeField] private Vector2 itemIconBoxSize = new Vector2(84f, 64f);
 
     [Header("Visuals")]
     [SerializeField] private Color idleColor = new Color(0.98f, 0.97f, 0.94f, 1f);
@@ -164,7 +165,7 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
 
         if (cellText != null)
         {
-            cellText.text = order != null ? order.cellNumber : "--";
+            cellText.text = order != null && !string.IsNullOrEmpty(order.cellNumber) ? "#" + order.cellNumber : "--";
         }
 
         if (payoutText != null)
@@ -184,6 +185,18 @@ public class OrderCardView : MonoBehaviour, IPointerClickHandler, IBeginDragHand
         }
 
         ApplyVisuals();
+    }
+
+    public void SetItemIcon(Sprite icon)
+    {
+        if (spriteFrame == null || icon == null)
+        {
+            return;
+        }
+
+        spriteFrame.sprite = icon;
+        spriteFrame.preserveAspect = true;
+        KitchenOrderPrepUIController.FitIconInBox(spriteFrame.rectTransform, icon, itemIconBoxSize);
     }
 
     public void SetSelected(bool selected)
