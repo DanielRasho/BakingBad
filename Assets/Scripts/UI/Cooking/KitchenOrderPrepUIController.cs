@@ -52,11 +52,22 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Large
     }
 
-    private enum PlacementShapeType
+    private enum PlacementHoleShape
     {
-        Square,
-        Triangle,
-        Rectangle
+        Circle,
+        Star,
+        Hexagon,
+        Flower,
+        Blob,
+        Diamond
+    }
+
+    private enum PlacementIcon
+    {
+        RotateLeft,
+        RotateRight,
+        ZoomIn,
+        ZoomOut
     }
 
     private enum BakeResult
@@ -74,10 +85,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public OrderRuntimeState State;
         public OrderCardView CardView;
         public CakeSizeOption RequiredCakeSize;
-        public PlacementShapeType ShapeType;
+        public PlacementHoleShape HoleShape;
+        public float HoleRotationDegrees;
         public int BasePayoutValue;
         public Vector2 TargetAnchoredPosition;
         public float TargetRotationDegrees;
+        public float TargetScale;
+        public float PieceScale = 1f;
         public CakeSizeOption SelectedCakeSize = CakeSizeOption.None;
         public bool SizeMatched;
         public bool PlacementCompleted;
@@ -131,6 +145,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private RectTransform dragHintPointer;
     [Tooltip("Icon shown in the recipe card for each contrabandItem name in the orders JSON.")]
     [SerializeField] private ContrabandIconEntry[] contrabandIcons;
+
+    [Header("Placement Buttons")]
+    [SerializeField] private Sprite placementIconButtonSprite;
+    [SerializeField] private Sprite placementConfirmButtonSprite;
 
     [Header("Board Summary")]
     [SerializeField] private Text totalMoneyText;
@@ -195,16 +213,22 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private static Sprite cakeSizeCylinderSprite;
 
     private RectTransform placementPlayArea;
+    private RectTransform placementHoleRect;
+    private Image placementHoleImage;
     private RectTransform placementTargetRect;
-    private Text placementTargetLabelText;
+    private Image placementShadowImage;
     private RectTransform placementPieceRect;
-    private Text placementPieceLabelText;
+    private Image placementPieceImage;
     private ShapePlacementPieceView placementPieceView;
     private Text placementStatusText;
     private Text placementScoreText;
     private Button placementRotateLeftButton;
     private Button placementRotateRightButton;
+    private Button placementScaleDownButton;
+    private Button placementScaleUpButton;
     private Button placementConfirmButton;
+    private static readonly Dictionary<PlacementHoleShape, Sprite> placementHoleSprites = new Dictionary<PlacementHoleShape, Sprite>();
+    private static readonly Dictionary<PlacementIcon, Sprite> placementIconSprites = new Dictionary<PlacementIcon, Sprite>();
 
     private Image bakeProgressFillImage;
     private RectTransform bakePerfectZoneRect;
@@ -226,6 +250,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private const float PlacementRotationStep = 15f;
     private const float PlacementDistanceThreshold = 28f;
     private const float PlacementAngleThreshold = 18f;
+    private const float PlacementScaleStep = 0.1f;
+    private const float PlacementScaleMin = 0.5f;
+    private const float PlacementScaleMax = 1.6f;
+    private const float PlacementScaleThreshold = 0.06f;
+    private const float PlacementPieceBoxSize = 140f;
+    private const float PlacementHoleSizeFactor = 1.3f;
+    private static readonly Vector2 PlacementPlayAreaSize = new Vector2(820f, 340f);
+    private static readonly Vector2 PlacementPieceStartPosition = new Vector2(-270f, 0f);
+    private static readonly float[] PlacementTargetScales = { 0.7f, 0.8f, 0.9f, 1.1f, 1.2f, 1.3f };
     private const float BakeDurationSeconds = 4.5f;
     private const float PerfectBakeWindowWidth = 0.12f;
     private const float PerfectBakeWindowMinCenter = 0.26f;
@@ -1099,52 +1132,106 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         ClearChildren(panel);
-        Text title = CreateText("Instruction", panel, "Mueve y rota la pieza hasta encajarla en la silueta.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(620f, 40f), new Vector2(0.5f, 0.5f));
+        Text title = CreateText("Instruction", panel, "Cubre la sombra con el objeto: muevelo, giralo y ajusta su tamano.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
         placementPlayArea = CreateRect("PlacementPlayArea", panel);
-        SetRect(placementPlayArea, new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), new Vector2(0f, -8f), new Vector2(600f, 330f), new Vector2(0.5f, 0.5f));
+        SetRect(placementPlayArea, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, 0f), PlacementPlayAreaSize, new Vector2(0.5f, 0.5f));
         Image playAreaImage = placementPlayArea.gameObject.AddComponent<Image>();
-        playAreaImage.color = new Color(0.94f, 0.93f, 0.90f, 1f);
+        playAreaImage.color = new Color(0.97f, 0.91f, 0.82f, 1f);
+        Outline playAreaOutline = placementPlayArea.gameObject.AddComponent<Outline>();
+        playAreaOutline.effectColor = new Color(0.55f, 0.30f, 0.22f, 1f);
+        playAreaOutline.effectDistance = new Vector2(2f, -2f);
 
-        placementTargetRect = CreateRect("PlacementTarget", placementPlayArea);
-        Image targetImage = placementTargetRect.gameObject.AddComponent<Image>();
-        targetImage.color = new Color(0.2f, 0.2f, 0.2f, 0.18f);
-        placementTargetLabelText = CreateText("TargetLabel", placementTargetRect, "OBJETIVO", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(placementTargetLabelText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        // Draw order: hole in the cake, the item's shadow inside it, then the draggable item on top.
+        placementHoleImage = CreateImage("PlacementHole", placementPlayArea, Color.white);
+        placementHoleImage.raycastTarget = false;
+        placementHoleRect = placementHoleImage.rectTransform;
 
-        placementPieceRect = CreateRect("PlacementPiece", placementPlayArea);
-        Image pieceImage = placementPieceRect.gameObject.AddComponent<Image>();
-        pieceImage.color = new Color(1f, 0.96f, 0.78f, 1f);
-        placementPieceLabelText = CreateText("PieceLabel", placementPieceRect, "PIEZA", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(placementPieceLabelText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        placementShadowImage = CreateImage("PlacementTargetShadow", placementPlayArea, new Color(0.10f, 0.05f, 0.03f, 0.85f));
+        placementShadowImage.preserveAspect = true;
+        placementShadowImage.raycastTarget = false;
+        placementTargetRect = placementShadowImage.rectTransform;
+
+        placementPieceImage = CreateImage("PlacementPiece", placementPlayArea, Color.white);
+        placementPieceImage.preserveAspect = true;
+        placementPieceRect = placementPieceImage.rectTransform;
         placementPieceView = placementPieceRect.gameObject.AddComponent<ShapePlacementPieceView>();
         placementPieceView.Initialize(placementPlayArea);
         placementPieceView.Changed += HandlePlacementPieceChanged;
 
-        placementRotateLeftButton = CreateButton("RotateLeftButton", panel, new Color(0.97f, 0.96f, 0.93f, 1f));
-        SetRect(placementRotateLeftButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-170f, 92f), new Vector2(120f, 42f), new Vector2(0.5f, 0.5f));
-        Text rotateLeftLabel = CreateText("Label", placementRotateLeftButton.GetComponent<RectTransform>(), "Girar -", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(rotateLeftLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
-        placementRotateLeftButton.onClick.AddListener(() => RotatePlacementPiece(-PlacementRotationStep));
+        const float controlsY = 106f;
+        placementRotateLeftButton = CreatePlacementIconButton("RotateLeftButton", panel, PlacementIcon.RotateLeft, new Vector2(-360f, controlsY));
+        placementRotateLeftButton.onClick.AddListener(() => RotatePlacementPiece(PlacementRotationStep));
 
-        placementRotateRightButton = CreateButton("RotateRightButton", panel, new Color(0.97f, 0.96f, 0.93f, 1f));
-        SetRect(placementRotateRightButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-20f, 92f), new Vector2(120f, 42f), new Vector2(0.5f, 0.5f));
-        Text rotateRightLabel = CreateText("Label", placementRotateRightButton.GetComponent<RectTransform>(), "Girar +", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(rotateRightLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
-        placementRotateRightButton.onClick.AddListener(() => RotatePlacementPiece(PlacementRotationStep));
+        placementRotateRightButton = CreatePlacementIconButton("RotateRightButton", panel, PlacementIcon.RotateRight, new Vector2(-266f, controlsY));
+        placementRotateRightButton.onClick.AddListener(() => RotatePlacementPiece(-PlacementRotationStep));
 
-        placementConfirmButton = CreateButton("ConfirmPlacementButton", panel, new Color(0.97f, 0.96f, 0.93f, 1f));
-        SetRect(placementConfirmButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(150f, 92f), new Vector2(180f, 42f), new Vector2(0.5f, 0.5f));
-        Text confirmLabel = CreateText("Label", placementConfirmButton.GetComponent<RectTransform>(), "Verificar encaje", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(confirmLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        placementScaleDownButton = CreatePlacementIconButton("ScaleDownButton", panel, PlacementIcon.ZoomOut, new Vector2(-146f, controlsY));
+        placementScaleDownButton.onClick.AddListener(() => ScalePlacementPiece(-PlacementScaleStep));
+
+        placementScaleUpButton = CreatePlacementIconButton("ScaleUpButton", panel, PlacementIcon.ZoomIn, new Vector2(-52f, controlsY));
+        placementScaleUpButton.onClick.AddListener(() => ScalePlacementPiece(PlacementScaleStep));
+
+        placementConfirmButton = CreateButton("ConfirmPlacementButton", panel, Color.white);
+        StylePlacementButton(placementConfirmButton, placementConfirmButtonSprite, true);
+        SetRect(placementConfirmButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(230f, controlsY), new Vector2(320f, 84f), new Vector2(0.5f, 0.5f));
+        Text confirmLabel = CreateText("Label", placementConfirmButton.GetComponent<RectTransform>(), "Verificar encaje", 32, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(confirmLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-40f, -20f), new Vector2(0.5f, 0.5f));
         placementConfirmButton.onClick.AddListener(ConfirmPlacement);
 
         placementStatusText = CreateText("PlacementStatusText", panel, "Aun no has colocado el objeto.", 19, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(placementStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 46f), new Vector2(560f, 24f), new Vector2(0.5f, 0.5f));
+        SetRect(placementStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
 
         placementScoreText = CreateText("PlacementScoreText", panel, "Precision: 0%", 18, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(placementScoreText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(400f, 24f), new Vector2(0.5f, 0.5f));
+        SetRect(placementScoreText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(400f, 22f), new Vector2(0.5f, 0.5f));
+    }
+
+    private Button CreatePlacementIconButton(string objectName, RectTransform panel, PlacementIcon icon, Vector2 position)
+    {
+        Button button = CreateButton(objectName, panel, Color.white);
+        StylePlacementButton(button, placementIconButtonSprite, false);
+        RectTransform buttonRect = button.GetComponent<RectTransform>();
+        SetRect(buttonRect, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), position, new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
+
+        Image iconImage = CreateImage("Icon", buttonRect, Color.white);
+        iconImage.sprite = GetPlacementIconSprite(icon);
+        iconImage.preserveAspect = true;
+        iconImage.raycastTarget = false;
+        SetRect(iconImage.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 4f), new Vector2(54f, 54f), new Vector2(0.5f, 0.5f));
+        return button;
+    }
+
+    private static void StylePlacementButton(Button button, Sprite sprite, bool sliced)
+    {
+        if (sprite == null)
+        {
+            return;
+        }
+
+        Image image = button.GetComponent<Image>();
+        image.sprite = sprite;
+        image.type = sliced ? Image.Type.Sliced : Image.Type.Simple;
+        image.preserveAspect = !sliced;
+
+        // The sprite already has its own border, so the generic black outline would double it.
+        Outline outline = button.GetComponent<Outline>();
+        if (outline != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(outline);
+            }
+            else
+            {
+                DestroyImmediate(outline);
+            }
+        }
+
+        if (button.GetComponent<CursorChange>() == null)
+        {
+            button.gameObject.AddComponent<CursorChange>();
+        }
     }
 
     private void BuildBakeTab(RectTransform panel)
@@ -1276,17 +1363,23 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private RuntimeOrder CreateRuntimeOrder(OrderDefinition definition, int runtimeIndex)
     {
-        PlacementShapeType parsedShapeType = ParseShapeType(definition != null ? definition.shapeType : null);
+        float targetScale = PlacementTargetScales[UnityEngine.Random.Range(0, PlacementTargetScales.Length)];
+        float holeHalfSize = PlacementPieceBoxSize * targetScale * PlacementHoleSizeFactor * 0.5f;
         return new RuntimeOrder
         {
             RuntimeIndex = runtimeIndex,
             Data = definition,
             State = OrderRuntimeState.Pending,
             RequiredCakeSize = ParseCakeSize(definition != null ? definition.cakeSize : null),
-            ShapeType = parsedShapeType,
+            HoleShape = (PlacementHoleShape)UnityEngine.Random.Range(0, Enum.GetValues(typeof(PlacementHoleShape)).Length),
+            HoleRotationDegrees = UnityEngine.Random.Range(0f, 360f),
             BasePayoutValue = definition != null && definition.basePayout > 0 ? definition.basePayout : ParsePayoutValue(definition != null ? definition.payout : null),
-            TargetAnchoredPosition = GetPlacementTargetPosition(runtimeIndex),
-            TargetRotationDegrees = GetPlacementTargetRotation(runtimeIndex, parsedShapeType)
+            // The hole always sits on the right half so the piece can start on the left without overlapping it.
+            TargetAnchoredPosition = new Vector2(
+                UnityEngine.Random.Range(40f, PlacementPlayAreaSize.x * 0.5f - holeHalfSize - 10f),
+                UnityEngine.Random.Range(-(PlacementPlayAreaSize.y * 0.5f - holeHalfSize - 10f), PlacementPlayAreaSize.y * 0.5f - holeHalfSize - 10f)),
+            TargetRotationDegrees = UnityEngine.Random.Range(0, 24) * PlacementRotationStep,
+            TargetScale = targetScale
         };
     }
 
@@ -1470,6 +1563,20 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         placementPieceView.RotateBy(deltaDegrees);
     }
 
+    private void ScalePlacementPiece(float deltaScale)
+    {
+        if (placementPieceRect == null || activePrepOrder == null || !activePrepOrder.SizeMatched || activePrepOrder.PlacementCompleted)
+        {
+            return;
+        }
+
+        // Rounded to the step so the target scales stay exactly reachable.
+        float nextScale = Mathf.Round((activePrepOrder.PieceScale + deltaScale) / PlacementScaleStep) * PlacementScaleStep;
+        activePrepOrder.PieceScale = Mathf.Clamp(nextScale, PlacementScaleMin, PlacementScaleMax);
+        placementPieceRect.localScale = new Vector3(activePrepOrder.PieceScale, activePrepOrder.PieceScale, 1f);
+        HandlePlacementPieceChanged();
+    }
+
     private void HandlePlacementPieceChanged()
     {
         if (activePrepOrder == null || placementPieceRect == null)
@@ -1492,9 +1599,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         float score = GetPlacementScore(activePrepOrder);
         float distance = Vector2.Distance(activePrepOrder.PieceAnchoredPosition, activePrepOrder.TargetAnchoredPosition);
-        float angleDelta = GetRotationDelta(activePrepOrder.PieceRotationDegrees, activePrepOrder.TargetRotationDegrees, GetShapeRotationSymmetry(activePrepOrder.ShapeType));
+        float angleDelta = Mathf.Abs(Mathf.DeltaAngle(activePrepOrder.PieceRotationDegrees, activePrepOrder.TargetRotationDegrees));
+        float scaleDelta = Mathf.Abs(activePrepOrder.PieceScale - activePrepOrder.TargetScale);
 
-        if (distance <= PlacementDistanceThreshold && angleDelta <= PlacementAngleThreshold)
+        if (distance <= PlacementDistanceThreshold && angleDelta <= PlacementAngleThreshold && scaleDelta <= PlacementScaleThreshold)
         {
             activePrepOrder.PlacementCompleted = true;
             activePrepOrder.PlacementScore = score;
@@ -1505,7 +1613,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        placementStatusText.text = "Aun no encaja. Ajusta mejor la posicion y la rotacion.";
+        placementStatusText.text = GetPlacementHint(distance, angleDelta, activePrepOrder.PieceScale - activePrepOrder.TargetScale);
         placementScoreText.text = "Precision actual: " + Mathf.RoundToInt(score * 100f) + "%";
     }
 
@@ -1830,13 +1938,17 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         bool hasActiveOrder = activePrepOrder != null;
         bool placementAvailable = hasActiveOrder && activePrepOrder.SizeMatched;
-        placementPieceView.SetInteractable(placementAvailable && !activePrepOrder.PlacementCompleted);
-        placementConfirmButton.interactable = placementAvailable && !activePrepOrder.PlacementCompleted;
-        placementRotateLeftButton.interactable = placementAvailable && !activePrepOrder.PlacementCompleted;
-        placementRotateRightButton.interactable = placementAvailable && !activePrepOrder.PlacementCompleted;
+        bool canEdit = placementAvailable && !activePrepOrder.PlacementCompleted;
+        placementPieceView.SetInteractable(canEdit);
+        placementConfirmButton.interactable = canEdit;
+        placementRotateLeftButton.interactable = canEdit;
+        placementRotateRightButton.interactable = canEdit;
+        placementScaleDownButton.interactable = canEdit;
+        placementScaleUpButton.interactable = canEdit;
 
         if (!hasActiveOrder)
         {
+            placementHoleRect.gameObject.SetActive(false);
             placementTargetRect.gameObject.SetActive(false);
             placementPieceRect.gameObject.SetActive(false);
             placementStatusText.text = "Bloqueado hasta confirmar el tamano.";
@@ -1844,6 +1956,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
+        placementHoleRect.gameObject.SetActive(true);
         placementTargetRect.gameObject.SetActive(true);
         placementPieceRect.gameObject.SetActive(true);
         ConfigurePlacementRuntimeOrder(activePrepOrder);
@@ -1860,7 +1973,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
         else
         {
-            placementStatusText.text = "Arrastra la pieza y usa Girar +/- para alinearla.";
+            placementStatusText.text = "Arrastra el objeto y usa los botones para girarlo y cambiar su tamano.";
             placementScoreText.text = "Precision: " + Mathf.RoundToInt(GetPlacementScore(activePrepOrder) * 100f) + "%";
         }
     }
@@ -2176,19 +2289,32 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        Vector2 targetSize = GetShapeSize(order.ShapeType);
-        placementTargetRect.sizeDelta = targetSize;
+        Sprite itemIcon = GetContrabandIcon(order.Data.contrabandItem);
+        Vector2 boxSize = new Vector2(PlacementPieceBoxSize, PlacementPieceBoxSize);
+
+        float holeSize = PlacementPieceBoxSize * order.TargetScale * PlacementHoleSizeFactor;
+        placementHoleImage.sprite = GetPlacementHoleSprite(order.HoleShape);
+        placementHoleRect.sizeDelta = new Vector2(holeSize, holeSize);
+        placementHoleRect.anchoredPosition = order.TargetAnchoredPosition;
+        placementHoleRect.localRotation = Quaternion.Euler(0f, 0f, order.HoleRotationDegrees);
+
+        placementShadowImage.sprite = itemIcon;
+        placementShadowImage.enabled = itemIcon != null;
+        placementTargetRect.sizeDelta = boxSize;
         placementTargetRect.anchoredPosition = order.TargetAnchoredPosition;
         placementTargetRect.localRotation = Quaternion.Euler(0f, 0f, order.TargetRotationDegrees);
-        placementTargetLabelText.text = GetShapeLabel(order.ShapeType);
+        placementTargetRect.localScale = new Vector3(order.TargetScale, order.TargetScale, 1f);
 
-        placementPieceRect.sizeDelta = targetSize;
-        placementPieceLabelText.text = order.Data.contrabandItem;
+        placementPieceImage.sprite = itemIcon;
+        placementPieceImage.color = itemIcon != null ? Color.white : new Color(1f, 0.96f, 0.78f, 1f);
+        placementPieceRect.sizeDelta = boxSize;
 
         if (!order.PiecePoseInitialized)
         {
-            order.PieceAnchoredPosition = GetDefaultPieceStartPosition(order.ShapeType);
-            order.PieceRotationDegrees = NormalizeAngle(order.TargetRotationDegrees + 45f);
+            // Start clearly off in every axis so the player has to use each control at least once.
+            order.PieceAnchoredPosition = PlacementPieceStartPosition;
+            order.PieceRotationDegrees = NormalizeAngle(order.TargetRotationDegrees + UnityEngine.Random.Range(3, 10) * PlacementRotationStep * (UnityEngine.Random.value < 0.5f ? -1f : 1f));
+            order.PieceScale = order.TargetScale < 1f ? order.TargetScale + 0.3f : order.TargetScale - 0.3f;
             order.PiecePoseInitialized = true;
         }
 
@@ -2196,10 +2322,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             order.PieceAnchoredPosition = order.TargetAnchoredPosition;
             order.PieceRotationDegrees = order.TargetRotationDegrees;
+            order.PieceScale = order.TargetScale;
         }
 
         placementPieceRect.anchoredPosition = order.PieceAnchoredPosition;
         placementPieceRect.localRotation = Quaternion.Euler(0f, 0f, order.PieceRotationDegrees);
+        placementPieceRect.localScale = new Vector3(order.PieceScale, order.PieceScale, 1f);
     }
 
     private float GetPlacementScore(RuntimeOrder order)
@@ -2211,9 +2339,27 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         float distance = Vector2.Distance(order.PieceAnchoredPosition, order.TargetAnchoredPosition);
         float distanceScore = 1f - Mathf.Clamp01(distance / 180f);
-        float rotationDelta = GetRotationDelta(order.PieceRotationDegrees, order.TargetRotationDegrees, GetShapeRotationSymmetry(order.ShapeType));
+        float rotationDelta = Mathf.Abs(Mathf.DeltaAngle(order.PieceRotationDegrees, order.TargetRotationDegrees));
         float rotationScore = 1f - Mathf.Clamp01(rotationDelta / 90f);
-        return Mathf.Clamp01(distanceScore * 0.65f + rotationScore * 0.35f);
+        float scaleScore = 1f - Mathf.Clamp01(Mathf.Abs(order.PieceScale - order.TargetScale) / 0.5f);
+        return Mathf.Clamp01(distanceScore * 0.5f + rotationScore * 0.25f + scaleScore * 0.25f);
+    }
+
+    private static string GetPlacementHint(float distance, float angleDelta, float scaleDelta)
+    {
+        if (distance > PlacementDistanceThreshold)
+        {
+            return "Aun no encaja. Acerca el objeto al centro de la sombra.";
+        }
+
+        if (angleDelta > PlacementAngleThreshold)
+        {
+            return "Aun no encaja. Gira el objeto para que coincida con la sombra.";
+        }
+
+        return scaleDelta > 0f
+            ? "Aun no encaja. El objeto es mas grande que la sombra."
+            : "Aun no encaja. El objeto es mas pequeno que la sombra.";
     }
 
     private void EnsureToppingOptions(RuntimeOrder order)
@@ -2372,27 +2518,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return CakeSizeOption.Medium;
     }
 
-    private static PlacementShapeType ParseShapeType(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return PlacementShapeType.Square;
-        }
-
-        string normalized = value.Trim().ToLowerInvariant();
-        if (normalized.Contains("tri"))
-        {
-            return PlacementShapeType.Triangle;
-        }
-
-        if (normalized.Contains("rect"))
-        {
-            return PlacementShapeType.Rectangle;
-        }
-
-        return PlacementShapeType.Square;
-    }
-
     private static string GetCakeSizeLabel(CakeSizeOption size)
     {
         switch (size)
@@ -2405,105 +2530,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             default:
                 return "Mediano";
         }
-    }
-
-    private static string GetShapeLabel(PlacementShapeType shapeType)
-    {
-        switch (shapeType)
-        {
-            case PlacementShapeType.Rectangle:
-                return "RECT";
-            case PlacementShapeType.Triangle:
-                return "TRI";
-            case PlacementShapeType.Square:
-            default:
-                return "CUAD";
-        }
-    }
-
-    private static Vector2 GetShapeSize(PlacementShapeType shapeType)
-    {
-        switch (shapeType)
-        {
-            case PlacementShapeType.Rectangle:
-                return new Vector2(138f, 82f);
-            case PlacementShapeType.Triangle:
-                return new Vector2(106f, 106f);
-            case PlacementShapeType.Square:
-            default:
-                return new Vector2(96f, 96f);
-        }
-    }
-
-    private static Vector2 GetDefaultPieceStartPosition(PlacementShapeType shapeType)
-    {
-        switch (shapeType)
-        {
-            case PlacementShapeType.Rectangle:
-                return new Vector2(-170f, -88f);
-            case PlacementShapeType.Triangle:
-                return new Vector2(-160f, -74f);
-            case PlacementShapeType.Square:
-            default:
-                return new Vector2(-165f, -80f);
-        }
-    }
-
-    private static Vector2 GetPlacementTargetPosition(int runtimeIndex)
-    {
-        Vector2[] presets =
-        {
-            new Vector2(90f, 36f),
-            new Vector2(-40f, 54f),
-            new Vector2(44f, -18f),
-            new Vector2(-88f, 12f),
-            new Vector2(0f, 72f),
-            new Vector2(108f, -44f),
-            new Vector2(-100f, -30f),
-            new Vector2(26f, 8f)
-        };
-
-        return presets[runtimeIndex % presets.Length];
-    }
-
-    private static float GetPlacementTargetRotation(int runtimeIndex, PlacementShapeType shapeType)
-    {
-        switch (shapeType)
-        {
-            case PlacementShapeType.Triangle:
-                return (runtimeIndex % 3) * 30f;
-            case PlacementShapeType.Rectangle:
-                return (runtimeIndex % 2) * 90f;
-            case PlacementShapeType.Square:
-            default:
-                return (runtimeIndex % 4) * 22.5f;
-        }
-    }
-
-    private static float GetShapeRotationSymmetry(PlacementShapeType shapeType)
-    {
-        switch (shapeType)
-        {
-            case PlacementShapeType.Rectangle:
-                return 180f;
-            case PlacementShapeType.Triangle:
-                return 120f;
-            case PlacementShapeType.Square:
-            default:
-                return 90f;
-        }
-    }
-
-    private static float GetRotationDelta(float currentDegrees, float targetDegrees, float symmetry)
-    {
-        float delta = Mathf.Abs(Mathf.DeltaAngle(currentDegrees, targetDegrees));
-        if (symmetry <= 0f)
-        {
-            return delta;
-        }
-
-        float wrapped = delta % symmetry;
-        return Mathf.Min(wrapped, symmetry - wrapped);
     }
 
     private static float NormalizeAngle(float angle)
@@ -2886,9 +2912,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         const int width = 128;
         const int height = 112;
+        cakeSizeCylinderSprite = CreateProceduralSprite("CakeSizeCylinder", width, height, new Vector2(0.5f, 0f), (x, y) => SampleCylinder(x, y, width, height));
+        return cakeSizeCylinderSprite;
+    }
+
+    // Renders a sampler into a sprite with 4x4 supersampling so edges stay smooth when the UI scales.
+    private static Sprite CreateProceduralSprite(string spriteName, int width, int height, Vector2 pivot, Func<float, float, Color> sampler)
+    {
         const int subSamples = 4;
         Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        texture.name = "CakeSizeCylinder";
+        texture.name = spriteName;
         texture.filterMode = FilterMode.Bilinear;
         texture.wrapMode = TextureWrapMode.Clamp;
 
@@ -2902,7 +2935,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 {
                     for (int sx = 0; sx < subSamples; sx++)
                     {
-                        Color sample = SampleCylinder(x + (sx + 0.5f) / subSamples, y + (sy + 0.5f) / subSamples, width, height);
+                        Color sample = sampler(x + (sx + 0.5f) / subSamples, y + (sy + 0.5f) / subSamples);
                         accumulated += new Color(sample.r * sample.a, sample.g * sample.a, sample.b * sample.a, sample.a);
                     }
                 }
@@ -2916,9 +2949,191 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         texture.SetPixels(pixels);
         texture.Apply(false, true);
-        cakeSizeCylinderSprite = Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0f), 100f);
-        cakeSizeCylinderSprite.name = "CakeSizeCylinder";
-        return cakeSizeCylinderSprite;
+        Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, width, height), pivot, 100f);
+        sprite.name = spriteName;
+        return sprite;
+    }
+
+    private static Sprite GetPlacementHoleSprite(PlacementHoleShape shape)
+    {
+        Sprite sprite;
+        if (placementHoleSprites.TryGetValue(shape, out sprite) && sprite != null)
+        {
+            return sprite;
+        }
+
+        const int size = 256;
+        sprite = CreateProceduralSprite("PlacementHole_" + shape, size, size, new Vector2(0.5f, 0.5f), (x, y) => SamplePlacementHole(shape, x - size * 0.5f, y - size * 0.5f, size * 0.5f - 8f));
+        placementHoleSprites[shape] = sprite;
+        return sprite;
+    }
+
+    private static Color SamplePlacementHole(PlacementHoleShape shape, float px, float py, float radius)
+    {
+        float distance = GetHoleShapeDistance(shape, new Vector2(px, py), radius);
+        if (distance > 0f)
+        {
+            return Color.clear;
+        }
+
+        const float rimWidth = 5f;
+        if (distance > -rimWidth)
+        {
+            return new Color(0.42f, 0.25f, 0.18f, 1f);
+        }
+
+        // Darker toward the rim so the cut reads as a hollow in the cake.
+        float depth = Mathf.Clamp01((-distance - rimWidth) / 40f);
+        return Color.Lerp(new Color(0.50f, 0.35f, 0.26f, 1f), new Color(0.68f, 0.51f, 0.38f, 1f), depth);
+    }
+
+    private static float GetHoleShapeDistance(PlacementHoleShape shape, Vector2 point, float radius)
+    {
+        float length = point.magnitude;
+        float angle = Mathf.Atan2(point.y, point.x);
+        switch (shape)
+        {
+            case PlacementHoleShape.Star:
+                return PolygonDistance(point, CreateStarVertices(5, radius, radius * 0.5f));
+            case PlacementHoleShape.Hexagon:
+                return PolygonDistance(point, CreateStarVertices(3, radius, radius));
+            case PlacementHoleShape.Diamond:
+                return PolygonDistance(point, new[] { new Vector2(0f, radius), new Vector2(-radius * 0.72f, 0f), new Vector2(0f, -radius), new Vector2(radius * 0.72f, 0f) });
+            case PlacementHoleShape.Flower:
+                return length - radius * (0.82f + 0.18f * Mathf.Cos(6f * angle));
+            case PlacementHoleShape.Blob:
+                return length - radius * (0.86f + 0.08f * Mathf.Sin(3f * angle + 0.7f) + 0.06f * Mathf.Cos(5f * angle - 0.3f));
+            case PlacementHoleShape.Circle:
+            default:
+                return length - radius;
+        }
+    }
+
+    // Alternating outer/inner vertices; equal radii give a regular polygon with 2 * points sides.
+    private static Vector2[] CreateStarVertices(int points, float outerRadius, float innerRadius)
+    {
+        Vector2[] vertices = new Vector2[points * 2];
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            float vertexAngle = Mathf.PI * 0.5f + i * Mathf.PI / points;
+            float vertexRadius = i % 2 == 0 ? outerRadius : innerRadius;
+            vertices[i] = new Vector2(Mathf.Cos(vertexAngle), Mathf.Sin(vertexAngle)) * vertexRadius;
+        }
+
+        return vertices;
+    }
+
+    // Signed distance to an arbitrary closed polygon (negative inside).
+    private static float PolygonDistance(Vector2 point, Vector2[] vertices)
+    {
+        float squaredDistance = (point - vertices[0]).sqrMagnitude;
+        float sign = 1f;
+        for (int i = 0, j = vertices.Length - 1; i < vertices.Length; j = i, i++)
+        {
+            Vector2 edge = vertices[j] - vertices[i];
+            Vector2 toPoint = point - vertices[i];
+            Vector2 closest = toPoint - edge * Mathf.Clamp01(Vector2.Dot(toPoint, edge) / Vector2.Dot(edge, edge));
+            squaredDistance = Mathf.Min(squaredDistance, closest.sqrMagnitude);
+
+            bool aboveStart = point.y >= vertices[i].y;
+            bool belowEnd = point.y < vertices[j].y;
+            bool leftOfEdge = edge.x * toPoint.y > edge.y * toPoint.x;
+            if ((aboveStart && belowEnd && leftOfEdge) || (!aboveStart && !belowEnd && !leftOfEdge))
+            {
+                sign = -sign;
+            }
+        }
+
+        return sign * Mathf.Sqrt(squaredDistance);
+    }
+
+    private static Sprite GetPlacementIconSprite(PlacementIcon icon)
+    {
+        Sprite sprite;
+        if (placementIconSprites.TryGetValue(icon, out sprite) && sprite != null)
+        {
+            return sprite;
+        }
+
+        const int size = 64;
+        sprite = CreateProceduralSprite("PlacementIcon_" + icon, size, size, new Vector2(0.5f, 0.5f), (x, y) => SamplePlacementIcon(icon, x, y));
+        placementIconSprites[icon] = sprite;
+        return sprite;
+    }
+
+    private static Color SamplePlacementIcon(PlacementIcon icon, float px, float py)
+    {
+        Color fillColor = new Color(1f, 0.98f, 0.90f, 1f);
+        Color inkColor = new Color(0.55f, 0.30f, 0.22f, 1f);
+        const float outlineWidth = 3.5f;
+
+        float shapeDistance;
+        float symbolDistance = float.MaxValue;
+        switch (icon)
+        {
+            case PlacementIcon.RotateLeft:
+            case PlacementIcon.RotateRight:
+                // Rotate right is the mirror image of rotate left.
+                Vector2 point = new Vector2(icon == PlacementIcon.RotateRight ? 64f - px : px, py);
+                shapeDistance = RotateArrowDistance(point);
+                break;
+            default:
+                Vector2 lensCenter = new Vector2(27f, 37f);
+                Vector2 lensPoint = new Vector2(px, py);
+                float lens = (lensPoint - lensCenter).magnitude - 17f;
+                float handle = CapsuleDistance(lensPoint, new Vector2(38f, 26f), new Vector2(52f, 12f), 5f);
+                shapeDistance = Mathf.Min(lens, handle);
+                symbolDistance = CapsuleDistance(lensPoint, new Vector2(19f, 37f), new Vector2(35f, 37f), 2.8f);
+                if (icon == PlacementIcon.ZoomIn)
+                {
+                    symbolDistance = Mathf.Min(symbolDistance, CapsuleDistance(lensPoint, new Vector2(27f, 29f), new Vector2(27f, 45f), 2.8f));
+                }
+                break;
+        }
+
+        if (symbolDistance <= 0f)
+        {
+            return inkColor;
+        }
+
+        if (shapeDistance <= 0f)
+        {
+            return fillColor;
+        }
+
+        return shapeDistance <= outlineWidth ? inkColor : Color.clear;
+    }
+
+    // Counterclockwise arc with an arrowhead at its end.
+    private static float RotateArrowDistance(Vector2 point)
+    {
+        Vector2 center = new Vector2(32f, 32f);
+        const float radius = 17f;
+        const float halfWidth = 4f;
+        float startAngle = -80f * Mathf.Deg2Rad;
+        float endAngle = 160f * Mathf.Deg2Rad;
+
+        Vector2 local = point - center;
+        float pointAngle = Mathf.Atan2(local.y, local.x);
+        float sweep = Mathf.Repeat(pointAngle - startAngle, Mathf.PI * 2f);
+        Vector2 arcStart = center + new Vector2(Mathf.Cos(startAngle), Mathf.Sin(startAngle)) * radius;
+        Vector2 arcEnd = center + new Vector2(Mathf.Cos(endAngle), Mathf.Sin(endAngle)) * radius;
+        float arc = sweep <= endAngle - startAngle
+            ? Mathf.Abs(local.magnitude - radius) - halfWidth
+            : Mathf.Min((point - arcStart).magnitude, (point - arcEnd).magnitude) - halfWidth;
+
+        Vector2 tangent = new Vector2(-Mathf.Sin(endAngle), Mathf.Cos(endAngle));
+        Vector2 normal = new Vector2(Mathf.Cos(endAngle), Mathf.Sin(endAngle));
+        Vector2 baseCenter = arcEnd - tangent * 2f;
+        Vector2[] head = { arcEnd + tangent * 11f, baseCenter - normal * 10f, baseCenter + normal * 10f };
+        return Mathf.Min(arc, PolygonDistance(point, head));
+    }
+
+    private static float CapsuleDistance(Vector2 point, Vector2 start, Vector2 end, float radius)
+    {
+        Vector2 segment = end - start;
+        float t = Mathf.Clamp01(Vector2.Dot(point - start, segment) / Vector2.Dot(segment, segment));
+        return (point - (start + segment * t)).magnitude - radius;
     }
 
     private static Color SampleCylinder(float px, float py, int width, int height)
