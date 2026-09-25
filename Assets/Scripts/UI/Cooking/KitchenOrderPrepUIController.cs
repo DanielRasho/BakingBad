@@ -1649,7 +1649,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         order.BakeOutcome = BakeResult.None;
         order.BakeInProgress = true;
         order.BakeProgressNormalized = 0f;
-        EnsurePerfectBakeWindow(order, true);
+        // Keep the zone the player already sees; a new one is rolled only after a failed attempt.
+        EnsurePerfectBakeWindow(order);
     }
 
     private void EnsurePerfectBakeWindow(RuntimeOrder order, bool forceNewWindow = false)
@@ -2022,7 +2023,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (activePrepOrder.BakeOutcome == BakeResult.None)
         {
             bakeStatusText.text = "Estado: listo para hornear";
-            if (bakeHintText != null) bakeHintText.text = "El area verde cambia de lugar en cada intento.";
+            if (bakeHintText != null) bakeHintText.text = "Deten el horneado cuando la barra llegue al area verde.";
             bakeActionButton.interactable = true;
             bakeButtonLabelText.text = "Iniciar horneado";
             return;
@@ -2035,7 +2036,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             bakeHintText.text = activePrepOrder.BakeOutcome == BakeResult.Perfect
                 ? "Perfecto. Ya puedes pasar al topping."
-                : "Fallaste el punto. Debes volver a hornear hasta que quede perfecto.";
+                : "Fallaste el punto. El area verde cambio de lugar para el siguiente intento.";
         }
     }
 
@@ -2276,6 +2277,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         else
         {
             order.BakeOutcome = BakeResult.Burnt;
+        }
+
+        if (order.BakeOutcome != BakeResult.Perfect)
+        {
+            // Move the zone now, while the result is on screen, so it never jumps once the next attempt starts.
+            EnsurePerfectBakeWindow(order, true);
         }
 
         RefreshAllUi();
