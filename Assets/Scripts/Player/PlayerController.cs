@@ -1,4 +1,6 @@
+using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -16,7 +18,9 @@ public class PrisonCookPlayerController : MonoBehaviour
     }
 
     [Header("Movement")]
-    [SerializeField] private float moveSpeed = 3.4f;
+    [FormerlySerializedAs("moveSpeed")]
+    [SerializeField] private float runSpeed = 3.4f;
+    [SerializeField] private float sneakSpeed = 1.5f;
     [SerializeField] private Camera movementCamera;
 
     [Header("Facing")]
@@ -27,6 +31,10 @@ public class PrisonCookPlayerController : MonoBehaviour
     [SerializeField] private float dashSpeed = 8.5f;
     [SerializeField] private float dashDuration = 0.14f;
     [SerializeField] private float dashCooldown = 0.65f;
+    [SerializeField] private bool allowDashWhileSneaking = false;
+#if ENABLE_INPUT_SYSTEM
+    [SerializeField] private Key dashKey = Key.LeftCtrl;
+#endif
 
     [Header("Interact")]
     [SerializeField] private float interactRange = 0.9f;
@@ -60,11 +68,35 @@ public class PrisonCookPlayerController : MonoBehaviour
     private float nextInteractionScanTime;
     private float verticalVelocity;
     private int inputLockCount;
+    private bool isSneaking;
+    private bool isMoving;
     private readonly Collider[] overlapBuffer = new Collider[96];
     private readonly RaycastHit[] movementCastBuffer = new RaycastHit[128];
 
     private const float CollisionSkin = 0.03f;
     private const float VisualCollisionPadding = 0.07f;
+
+    public event Action<bool> SneakStateChanged;
+
+    public bool IsSneaking
+    {
+        get { return isSneaking; }
+    }
+
+    public bool IsMoving
+    {
+        get { return isMoving; }
+    }
+
+    public bool IsDashing
+    {
+        get { return dashTimeRemaining > 0f; }
+    }
+
+    public float CurrentMoveSpeed
+    {
+        get { return isSneaking ? sneakSpeed : runSpeed; }
+    }
 
     public bool InputLocked
     {
@@ -115,6 +147,8 @@ public class PrisonCookPlayerController : MonoBehaviour
 
     private void OnDisable()
     {
+        SetSneaking(false);
+        isMoving = false;
         SetCurrentInteractable(null);
     }
 
@@ -129,6 +163,9 @@ public class PrisonCookPlayerController : MonoBehaviour
 
         if (InputLocked)
         {
+            SetSneaking(false);
+            isMoving = false;
+
             if (rotateToCardinalDirection)
             {
                 // ApplyFacingRotation();
@@ -147,13 +184,16 @@ public class PrisonCookPlayerController : MonoBehaviour
 
         Vector2 input = ReadMovementInput();
         Vector3 moveDirection = GetCameraRelativeDirection(input);
+        SetSneaking(IsSneakHeld());
+        isMoving = moveDirection.sqrMagnitude > 0.001f;
 
         if (moveDirection.sqrMagnitude > 0.001f)
         {
             SetFacingFromWorldDirection(moveDirection);
         }
 
-        if (WasDashPressedThisFrame() && dashCooldownRemaining <= 0f)
+        bool canDash = !isSneaking || allowDashWhileSneaking;
+        if (canDash && WasDashPressedThisFrame() && dashCooldownRemaining <= 0f)
         {
             dashDirection = moveDirection.sqrMagnitude > 0.001f
                 ? moveDirection.normalized
@@ -167,7 +207,7 @@ public class PrisonCookPlayerController : MonoBehaviour
             dashCooldownRemaining -= Time.deltaTime;
         }
 
-        Vector3 horizontalVelocity = moveDirection * moveSpeed;
+        Vector3 horizontalVelocity = moveDirection * CurrentMoveSpeed;
         if (dashTimeRemaining > 0f)
         {
             horizontalVelocity = dashDirection * dashSpeed;
@@ -213,11 +253,35 @@ public class PrisonCookPlayerController : MonoBehaviour
         return Vector2.ClampMagnitude(input, 1f);
     }
 
+    private bool IsSneakHeld()
+    {
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null && keyboard.shiftKey.isPressed)
+        {
+            return true;
+        }
+#endif
+
+        return false;
+    }
+
+    private void SetSneaking(bool value)
+    {
+        if (isSneaking == value)
+        {
+            return;
+        }
+
+        isSneaking = value;
+        SneakStateChanged?.Invoke(isSneaking);
+    }
+
     private bool WasDashPressedThisFrame()
     {
 #if ENABLE_INPUT_SYSTEM
         Keyboard keyboard = Keyboard.current;
-        if (keyboard != null && keyboard.shiftKey.wasPressedThisFrame)
+        if (keyboard != null && dashKey != Key.None && keyboard[dashKey].wasPressedThisFrame)
         {
             return true;
         }

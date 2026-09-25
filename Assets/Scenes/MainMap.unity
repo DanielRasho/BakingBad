@@ -15499,6 +15499,7 @@ GameObject:
   - component: {fileID: 855947661}
   - component: {fileID: 855947659}
   - component: {fileID: 855947658}
+  - component: {fileID: 855947663}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -15630,6 +15631,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 45, y: 90, z: 0}
+--- !u!81 &855947663
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 855947657}
+  m_Enabled: 1
 --- !u!1001 &858020302
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23374,13 +23383,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3f4bc1f673a10044a639bb76b3a4798, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrisonCookPlayerController
-  moveSpeed: 5
+  runSpeed: 5
+  sneakSpeed: 1.5
   movementCamera: {fileID: 855947661}
   startingDirection: 1
   rotateToCardinalDirection: 0
   dashSpeed: 8.5
   dashDuration: 0.14
   dashCooldown: 0.65
+  allowDashWhileSneaking: 0
+  dashKey: 55
   interactRange: 0.9
   interactHeight: 0.7
   interactRadius: 0.45
