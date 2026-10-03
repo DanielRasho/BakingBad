@@ -570,6 +570,69 @@ MonoBehaviour:
   menuButtonClickSound: {fileID: 8300000, guid: 7c635c63b09cd894baedda3d845dcc1b, type: 3}
   otherButtonClickSound: {fileID: 8300000, guid: 8e0ffd7876ee11e448f3c3af7d4e7696, type: 3}
   sfxVolume: 1
+  uiClick:
+    clips: []
+    volume: 1
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.04
+  kitchenUiClick:
+    clips: []
+    volume: 1
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.04
+  pieceRotate:
+    clips:
+    - {fileID: 8300000, guid: a6d7ca9e218eec74eae39b2ed4901566, type: 3}
+    - {fileID: 8300000, guid: 4c6b3d7d285574c478dedc298b19363c, type: 3}
+    - {fileID: 8300000, guid: 1c4193a9a4798e44a9bc68dc164aae8c, type: 3}
+    - {fileID: 8300000, guid: 5f320e4191f38174384062510dc097e8, type: 3}
+    volume: 1
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.04
+  orderPickup:
+    clips:
+    - {fileID: 8300000, guid: b3585666fbc04a54f9dd07c19bec226e, type: 3}
+    volume: 1
+    pitchMin: 0.96
+    pitchMax: 1.04
+    delay: 0
+    minInterval: 0.04
+  orderActivate:
+    clips:
+    - {fileID: 8300000, guid: bbfe13afc6516ca41aa95a1eb6f051ac, type: 3}
+    volume: 1
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.04
+  orderDeliveredPaper:
+    clips: []
+    volume: 1
+    pitchMin: 0.96
+    pitchMax: 1.04
+    delay: 0
+    minInterval: 0.04
+  orderDeliveredMoney:
+    clips: []
+    volume: 1
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0.12
+    minInterval: 0.04
+  orderDeliveredWrong:
+    clips: []
+    volume: 1
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.04
+  sfxVoiceCount: 8
 --- !u!82 &1958387304
 AudioSource:
   m_ObjectHideFlags: 0

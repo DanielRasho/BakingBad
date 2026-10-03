@@ -939,6 +939,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(Close);
+            ButtonSfx.Attach(closeButton, SfxId.KitchenUiClick);
         }
 
         for (int i = 0; i < tabButtons.Length; i++)
@@ -953,6 +954,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             EnsureButtonInputProxy(button);
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => ActivateTab(capturedIndex, false));
+            ButtonSfx.Attach(button, SfxId.KitchenUiClick);
         }
     }
 
@@ -978,6 +980,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         selectedOrder = order;
         activePrepOrder = order;
         activePrepOrder.State = OrderRuntimeState.ActivePrep;
+        AudioManager.Play(SfxId.OrderActivate);
         ActivateTab(0, true);
         RefreshAllUi();
     }
@@ -1293,6 +1296,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
             int capturedIndex = i;
             button.onClick.AddListener(() => HandleCakeSizeSelected(CakeSizeValues[capturedIndex]));
+            ButtonSfx.Attach(button, SfxId.KitchenUiClick);
 
             sizeOptionButtons[i] = button;
             sizeOptionBackgrounds[i] = button.GetComponent<Image>();
@@ -1347,9 +1351,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         placementScaleDownButton = CreatePlacementIconButton("ScaleDownButton", panel, PlacementIcon.ZoomOut, new Vector2(-146f, controlsY));
         placementScaleDownButton.onClick.AddListener(() => ScalePlacementPiece(-PlacementScaleStep));
+        ButtonSfx.Attach(placementScaleDownButton, SfxId.KitchenUiClick);
 
         placementScaleUpButton = CreatePlacementIconButton("ScaleUpButton", panel, PlacementIcon.ZoomIn, new Vector2(-52f, controlsY));
         placementScaleUpButton.onClick.AddListener(() => ScalePlacementPiece(PlacementScaleStep));
+        ButtonSfx.Attach(placementScaleUpButton, SfxId.KitchenUiClick);
 
         placementConfirmButton = CreateButton("ConfirmPlacementButton", panel, Color.white);
         StylePlacementButton(placementConfirmButton, placementConfirmButtonSprite, true);
@@ -1357,6 +1363,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Text confirmLabel = CreateText("Label", placementConfirmButton.GetComponent<RectTransform>(), "Verificar encaje", 32, FontStyle.Normal, TextAnchor.MiddleCenter);
         SetRect(confirmLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-40f, -20f), new Vector2(0.5f, 0.5f));
         placementConfirmButton.onClick.AddListener(ConfirmPlacement);
+        ButtonSfx.Attach(placementConfirmButton, SfxId.KitchenUiClick);
 
         placementStatusText = CreateText("PlacementStatusText", panel, "Aun no has colocado el objeto.", 19, FontStyle.Normal, TextAnchor.MiddleCenter);
         SetRect(placementStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
@@ -1457,6 +1464,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         bakeButtonLabelText = CreateText("Label", bakeActionButton.GetComponent<RectTransform>(), "Iniciar horneado", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
         SetRect(bakeButtonLabelText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
         bakeActionButton.onClick.AddListener(HandleBakeAction);
+        ButtonSfx.Attach(bakeActionButton, SfxId.KitchenUiClick);
     }
 
     private void BuildToppingTab(RectTransform panel)
@@ -1494,6 +1502,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
             int capturedIndex = i;
             button.onClick.AddListener(() => HandleToppingSelected(capturedIndex));
+            ButtonSfx.Attach(button, SfxId.KitchenUiClick);
 
             toppingOptionButtons[i] = button;
             toppingOptionBackgrounds[i] = button.GetComponent<Image>();
@@ -1694,6 +1703,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             activePrepOrder = order;
             activePrepOrder.State = OrderRuntimeState.ActivePrep;
+        AudioManager.Play(SfxId.OrderActivate);
             RefreshAllUi();
             ActivateTab(0, true);
             return;
@@ -1738,7 +1748,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        placementPieceView.RotateBy(deltaDegrees);
+        // Los botones de rotar no llevan click de UI: el engranaje suena una vez por cada rotacion real.
+        if (placementPieceView.RotateBy(deltaDegrees))
+        {
+            // Delta negativo = boton de rotar a la derecha.
+            AudioManager.PlayPieceRotate(deltaDegrees < 0f);
+        }
     }
 
     private void ScalePlacementPiece(float deltaScale)
@@ -2833,10 +2848,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         Button primaryButton = CreateDialogButton("ResultsPrimaryButton", panel.transform, dialogPrimaryButtonSprite, "Ir al siguiente día", Color.black, new Vector2(-180f, 90f), out resultsPrimaryLabel);
         primaryButton.onClick.AddListener(HandleResultsPrimaryButton);
+        ButtonSfx.Attach(primaryButton, SfxId.UiClick);
 
         Text mainMenuLabel;
         Button mainMenuButton = CreateDialogButton("ResultsMainMenuButton", panel.transform, dialogSecondaryButtonSprite, "Main Menu", new Color(0.992f, 0.961f, 0.902f, 1f), new Vector2(180f, 90f), out mainMenuLabel);
         mainMenuButton.onClick.AddListener(ReturnToMainMenu);
+        ButtonSfx.Attach(mainMenuButton, SfxId.UiClick);
 
         resultsMenuRoot.SetActive(false);
     }
@@ -2912,10 +2929,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Text closeXLabel = CreateText("Label", closeXButton.transform, "X", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
         SetRect(closeXLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
         closeXButton.onClick.AddListener(CloseControlsPopup);
+        ButtonSfx.Attach(closeXButton, SfxId.UiClick);
 
         Text continueLabel;
         Button continueButton = CreateDialogButton("ControlsPopupContinue", panel.transform, dialogPrimaryButtonSprite, "¡A cocinar!", Color.black, new Vector2(0f, 90f), out continueLabel);
         continueButton.onClick.AddListener(CloseControlsPopup);
+        ButtonSfx.Attach(continueButton, SfxId.UiClick);
 
         controlsPopupRoot.SetActive(false);
     }

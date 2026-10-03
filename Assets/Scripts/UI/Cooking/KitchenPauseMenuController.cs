@@ -135,18 +135,21 @@ public class KitchenPauseMenuController : MonoBehaviour
         {
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(ResumeGame);
+            ButtonSfx.Attach(closeButton, SfxId.UiClick);
         }
 
         if (resumeButton != null)
         {
             resumeButton.onClick.RemoveAllListeners();
             resumeButton.onClick.AddListener(ResumeGame);
+            ButtonSfx.Attach(resumeButton, SfxId.UiClick);
         }
 
         if (quitToMainMenuButton != null)
         {
             quitToMainMenuButton.onClick.RemoveAllListeners();
             quitToMainMenuButton.onClick.AddListener(QuitToMainMenu);
+            ButtonSfx.Attach(quitToMainMenuButton, SfxId.UiClick);
         }
     }
 

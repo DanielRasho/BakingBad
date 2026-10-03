@@ -1,23 +1,34 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+[DisallowMultipleComponent]
 [RequireComponent(typeof(Button))]
 public class ButtonSfx : MonoBehaviour
 {
-    public enum ButtonSfxType
-    {
-        Menu,
-        Other
-    }
-
-    [SerializeField] private ButtonSfxType sfxType = ButtonSfxType.Menu;
+    [SerializeField] private SfxId sfxType = SfxId.UiClick;
 
     private Button _button;
 
+    public static void Attach(Button button, SfxId sfxId)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        ButtonSfx sfx = button.GetComponent<ButtonSfx>();
+        if (sfx == null)
+        {
+            sfx = button.gameObject.AddComponent<ButtonSfx>();
+        }
+
+        sfx.sfxType = sfxId;
+        sfx.Bind();
+    }
+
     private void Awake()
     {
-        _button = GetComponent<Button>();
-        _button.onClick.AddListener(PlaySound);
+        Bind();
     }
 
     private void OnDestroy()
@@ -28,18 +39,19 @@ public class ButtonSfx : MonoBehaviour
         }
     }
 
+    private void Bind()
+    {
+        if (_button == null)
+        {
+            _button = GetComponent<Button>();
+        }
+
+        _button.onClick.RemoveListener(PlaySound);
+        _button.onClick.AddListener(PlaySound);
+    }
+
     private void PlaySound()
     {
-        if (AudioManager.Instance == null) return;
-
-        switch (sfxType)
-        {
-            case ButtonSfxType.Menu:
-                AudioManager.Instance.PlayMenuClickSound();
-                break;
-            case ButtonSfxType.Other:
-                AudioManager.Instance.PlayOtherClickSound();
-                break;
-        }
+        AudioManager.Play(sfxType);
     }
 }

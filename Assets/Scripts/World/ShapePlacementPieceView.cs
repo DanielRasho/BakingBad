@@ -46,15 +46,16 @@ public class ShapePlacementPieceView : MonoBehaviour
         }
     }
 
-    public void RotateBy(float deltaDegrees)
+    public bool RotateBy(float deltaDegrees)
     {
         if (!isInteractable || rectTransform == null)
         {
-            return;
+            return false;
         }
 
         rectTransform.Rotate(0f, 0f, deltaDegrees);
         NotifyChanged();
+        return true;
     }
 
     private void Update()

@@ -14,12 +14,14 @@ public class MainMenuController : MonoBehaviour
         {
             startButton.onClick.RemoveAllListeners();
             startButton.onClick.AddListener(StartGame);
+            ButtonSfx.Attach(startButton, SfxId.UiClick);
         }
 
         if (quitButton != null)
         {
             quitButton.onClick.RemoveAllListeners();
             quitButton.onClick.AddListener(QuitGame);
+            ButtonSfx.Attach(quitButton, SfxId.UiClick);
         }
     }
 

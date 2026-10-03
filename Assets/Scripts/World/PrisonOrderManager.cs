@@ -148,6 +148,7 @@ public class PrisonOrderManager : MonoBehaviour
             int penalty = Mathf.Min(wrongDeliveryPenalty, earnedMoney);
             earnedMoney -= penalty;
             wrongDeliveries++;
+            AudioManager.Play(SfxId.OrderDeliveredWrong);
             if (orderUi != null)
             {
                 orderUi.SetMoney(earnedMoney);
@@ -166,6 +167,7 @@ public class PrisonOrderManager : MonoBehaviour
         int payout = cake.payoutValue;
         earnedMoney += payout;
         deliveredOrders++;
+        AudioManager.Play(SfxId.OrderDeliveredCorrect);
 
         if (orderUi != null)
         {
@@ -246,6 +248,8 @@ public class PrisonOrderManager : MonoBehaviour
         {
             orderUi.AddOrder(assignedOrder);
         }
+
+        AudioManager.Play(SfxId.OrderPickup);
 
         RefreshMapIfVisible();
 
