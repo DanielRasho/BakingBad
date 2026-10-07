@@ -107,6 +107,26 @@ public class PrisonOrderManager : MonoBehaviour
         get { return firstDayGoal + Mathf.Max(0, DayProgress.CurrentDay - 1) * goalIncreasePerDay; }
     }
 
+    /// <summary>Removes money (never below zero) and returns the amount actually lost.</summary>
+    public int LoseMoney(int amount)
+    {
+        if (dayEnded || amount <= 0)
+        {
+            return 0;
+        }
+
+        int lost = Mathf.Min(amount, earnedMoney);
+        earnedMoney -= lost;
+
+        if (orderUi != null)
+        {
+            orderUi.SetMoney(earnedMoney);
+        }
+
+        ShowInventoryMessage("¡Un guardia te atrapó! -Q" + lost);
+        return lost;
+    }
+
     public void HandlePrisonerInteraction(PrisonerInteractable prisoner, PrisonCookPlayerController interactingPlayer)
     {
         if (dayEnded || prisoner == null)
