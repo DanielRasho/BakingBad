@@ -41,6 +41,8 @@ public class GuardEnemy : MonoBehaviour
     [SerializeField] private bool requireLineOfSight = true;
     [SerializeField] private LayerMask obstructionLayers = ~0;
     [SerializeField] private float eyeHeight = 1f;
+    [Tooltip("Cake in hand: big radius walking, small radius sneaking. Cakes only in inventory: small radius. No cakes: ignored.")]
+    [SerializeField] private bool onlyTargetCakeCarrier = true;
 
     [Header("Chase")]
     [SerializeField] private float chaseSpeed = 3.0f;
@@ -154,10 +156,10 @@ public class GuardEnemy : MonoBehaviour
     {
         bool sneaking;
         float distance;
+        float radius;
 
-        if (CanSeePlayer(out sneaking, out distance))
+        if (CanSeePlayer(out radius, out sneaking, out distance))
         {
-            float radius = sneaking ? sneakDetectionRadius : detectionRadius;
             float time = Mathf.Max(0.05f, timeToDetect) * (sneaking ? sneakDetectTimeMultiplier : 1f);
 
             // Closer players are noticed faster: 1x at the edge of the radius, up to 2x at point blank.
@@ -173,8 +175,9 @@ public class GuardEnemy : MonoBehaviour
         alert = Mathf.Clamp01(alert);
     }
 
-    private bool CanSeePlayer(out bool sneaking, out float distance)
+    private bool CanSeePlayer(out float radius, out bool sneaking, out float distance)
     {
+        radius = 0f;
         sneaking = false;
         distance = float.MaxValue;
 
@@ -184,11 +187,16 @@ public class GuardEnemy : MonoBehaviour
         }
 
         sneaking = player.IsSneaking;
+        radius = GetDetectionRadius();
+        if (radius <= 0f)
+        {
+            return false;
+        }
+
         Vector3 toPlayer = player.transform.position - transform.position;
         toPlayer.y = 0f;
         distance = toPlayer.magnitude;
 
-        float radius = sneaking ? sneakDetectionRadius : detectionRadius;
         if (distance > radius)
         {
             return false;
@@ -200,6 +208,29 @@ public class GuardEnemy : MonoBehaviour
         }
 
         return HasLineOfSight();
+    }
+
+    // Cake in hand: big radius walking, small radius sneaking.
+    // Cakes only in the inventory: small radius. No cakes: 0 (ignored).
+    private float GetDetectionRadius()
+    {
+        if (!onlyTargetCakeCarrier)
+        {
+            return player.IsSneaking ? sneakDetectionRadius : detectionRadius;
+        }
+
+        CakeInventory inventory = player.Inventory;
+        if (inventory == null)
+        {
+            return 0f;
+        }
+
+        if (inventory.SelectedItem != null)
+        {
+            return player.IsSneaking ? sneakDetectionRadius : detectionRadius;
+        }
+
+        return inventory.HasAnyCake ? sneakDetectionRadius : 0f;
     }
 
     private bool HasLineOfSight()
@@ -229,6 +260,8 @@ public class GuardEnemy : MonoBehaviour
 
     private void UpdateChase()
     {
+        // Once the guard has seen the cake, it keeps chasing until the player escapes,
+        // even if the cake is stored or delivered.
         if (player == null)
         {
             ReturnToPatrol();

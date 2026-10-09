@@ -43,6 +43,23 @@ public class CakeInventory : MonoBehaviour
         get { return GetItem(selectedIndex); }
     }
 
+    public bool HasAnyCake
+    {
+        get
+        {
+            EnsureSlots();
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i] != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
     public bool IsFull
     {
         get { return FindFreeSlot() < 0; }
