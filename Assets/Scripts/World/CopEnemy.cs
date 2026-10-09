@@ -4,9 +4,10 @@ using UnityEngine.AI;
 /// <summary>
 /// Patrolling guard. Notices the player inside a radius (smaller and slower while sneaking),
 /// chases once fully alerted and steals money on contact.
+/// Raises StateChanged and PlayerCaught so visuals/audio can react without the guard knowing about them.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
-public class GuardEnemy : MonoBehaviour
+public class CopEnemy : MonoBehaviour
 {
     public enum GuardState
     {
@@ -16,48 +17,55 @@ public class GuardEnemy : MonoBehaviour
         Stunned
     }
 
-    [Header("References")]
-    [SerializeField] private PrisonCookPlayerController player;
+    [Header("References")] [SerializeField]
+    private PrisonCookPlayerController player;
+
     [SerializeField] private PrisonOrderManager orderManager;
 
-    [Header("Patrol")]
-    [SerializeField] private Transform[] waypoints;
+    [Header("Patrol")] [SerializeField] private Transform[] waypoints;
     [SerializeField] private float patrolSpeed = 1.6f;
     [SerializeField] private float waypointWaitSeconds = 1.5f;
     [SerializeField] private float waypointReachDistance = 0.4f;
     [SerializeField] private bool randomWaypoints = false;
 
-    [Header("Detection")]
-    [Tooltip("Radius where the guard notices a player who is walking/running.")]
-    [SerializeField] private float detectionRadius = 6f;
-    [Tooltip("Radius where the guard notices a sneaking player.")]
-    [SerializeField] private float sneakDetectionRadius = 2.5f;
-    [Tooltip("Seconds to fully notice a player standing at point blank range while not sneaking.")]
-    [SerializeField] private float timeToDetect = 1.2f;
-    [Tooltip("Multiplier on the time to detect while the player sneaks (higher = takes longer).")]
-    [SerializeField] private float sneakDetectTimeMultiplier = 3f;
-    [Tooltip("Seconds for the alert meter to empty when the player is out of range.")]
-    [SerializeField] private float alertDecaySeconds = 2f;
+    [Header("Detection")] [Tooltip("Radius where the guard notices a player who is walking/running.")] [SerializeField]
+    private float detectionRadius = 6f;
+
+    [Tooltip("Radius where the guard notices a sneaking player.")] [SerializeField]
+    private float sneakDetectionRadius = 2.5f;
+
+    [Tooltip("Seconds to fully notice a player standing at point blank range while not sneaking.")] [SerializeField]
+    private float timeToDetect = 1.2f;
+
+    [Tooltip("Multiplier on the time to detect while the player sneaks (higher = takes longer).")] [SerializeField]
+    private float sneakDetectTimeMultiplier = 3f;
+
+    [Tooltip("Seconds for the alert meter to empty when the player is out of range.")] [SerializeField]
+    private float alertDecaySeconds = 2f;
+
     [SerializeField] private bool requireLineOfSight = true;
     [SerializeField] private LayerMask obstructionLayers = ~0;
     [SerializeField] private float eyeHeight = 1f;
-    [Tooltip("Cake in hand: big radius walking, small radius sneaking. Cakes only in inventory: small radius. No cakes: ignored.")]
-    [SerializeField] private bool onlyTargetCakeCarrier = true;
 
-    [Header("Chase")]
-    [SerializeField] private float chaseSpeed = 3.0f;
+    [Tooltip(
+        "Cake in hand: big radius walking, small radius sneaking. Cakes only in inventory: small radius. No cakes: ignored.")]
+    [SerializeField]
+    private bool onlyTargetCakeCarrier = true;
+
+    [Header("Chase")] [SerializeField] private float chaseSpeed = 3.0f;
     [SerializeField] private float catchDistance = 1f;
-    [Tooltip("The guard gives up when the player stays beyond this radius.")]
-    [SerializeField] private float loseRadius = 9f;
+
+    [Tooltip("The guard gives up when the player stays beyond this radius.")] [SerializeField]
+    private float loseRadius = 9f;
+
     [SerializeField] private float loseSightSeconds = 3f;
 
-    [Header("Steal")]
-    [SerializeField] private int moneyStolen = 40;
-    [Tooltip("Pause after catching the player before returning to patrol.")]
-    [SerializeField] private float stunSeconds = 3f;
+    [Header("Steal")] [SerializeField] private int moneyStolen = 40;
 
-    [Header("Debug")]
-    [SerializeField] private bool drawGizmos = true;
+    [Tooltip("Pause after catching the player before returning to patrol.")] [SerializeField]
+    private float stunSeconds = 3f;
+
+    [Header("Debug")] [SerializeField] private bool drawGizmos = true;
 
     private NavMeshAgent agent;
     private GuardState state = GuardState.Patrol;
@@ -68,8 +76,33 @@ public class GuardEnemy : MonoBehaviour
     private float stunTimer;
     private Vector3 lastKnownPlayerPos;
 
-    public GuardState State { get { return state; } }
-    public float Alert01 { get { return alert; } }
+    /// <summary>Raised whenever the guard switches state. Passes the new state.</summary>
+    public event System.Action<GuardState> StateChanged;
+
+    /// <summary>Raised once at the moment the guard catches the player.</summary>
+    public event System.Action PlayerCaught;
+
+    public GuardState State
+    {
+        get { return state; }
+    }
+
+    public float Alert01
+    {
+        get { return alert; }
+    }
+
+    /// <summary>World-space velocity of the guard (zero while standing still).</summary>
+    public Vector3 Velocity
+    {
+        get { return agent != null ? agent.velocity : Vector3.zero; }
+    }
+
+    /// <summary>Current movement speed in units per second.</summary>
+    public float CurrentSpeed
+    {
+        get { return Velocity.magnitude; }
+    }
 
     private void Awake()
     {
@@ -110,6 +143,22 @@ public class GuardEnemy : MonoBehaviour
         }
     }
 
+    // Single place where the state changes, so listeners are always notified.
+    private void SetState(GuardState newState)
+    {
+        if (state == newState)
+        {
+            return;
+        }
+
+        state = newState;
+
+        if (StateChanged != null)
+        {
+            StateChanged(newState);
+        }
+    }
+
     private void UpdatePatrol()
     {
         UpdateAlertMeter();
@@ -120,7 +169,7 @@ public class GuardEnemy : MonoBehaviour
             return;
         }
 
-        state = alert > 0f ? GuardState.Suspicious : GuardState.Patrol;
+        SetState(alert > 0f ? GuardState.Suspicious : GuardState.Patrol);
 
         // Freeze while noticing something so the player gets a visible warning.
         agent.isStopped = state == GuardState.Suspicious;
@@ -240,7 +289,8 @@ public class GuardEnemy : MonoBehaviour
         Vector3 dir = to - from;
 
         RaycastHit hit;
-        if (Physics.Raycast(from, dir.normalized, out hit, dir.magnitude, obstructionLayers, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(from, dir.normalized, out hit, dir.magnitude, obstructionLayers,
+                QueryTriggerInteraction.Ignore))
         {
             Transform t = hit.transform;
             return t == player.transform || t.IsChildOf(player.transform) || t.IsChildOf(transform);
@@ -251,11 +301,11 @@ public class GuardEnemy : MonoBehaviour
 
     private void StartChase()
     {
-        state = GuardState.Chase;
         alert = 1f;
         loseTimer = 0f;
         agent.isStopped = false;
         agent.speed = chaseSpeed;
+        SetState(GuardState.Chase);
     }
 
     private void UpdateChase()
@@ -298,10 +348,15 @@ public class GuardEnemy : MonoBehaviour
             orderManager.LoseMoney(moneyStolen);
         }
 
-        state = GuardState.Stunned;
         stunTimer = stunSeconds;
         alert = 0f;
         agent.isStopped = true;
+        SetState(GuardState.Stunned);
+
+        if (PlayerCaught != null)
+        {
+            PlayerCaught();
+        }
     }
 
     private void UpdateStunned()
@@ -315,10 +370,10 @@ public class GuardEnemy : MonoBehaviour
 
     private void ReturnToPatrol()
     {
-        state = GuardState.Patrol;
         alert = 0f;
         agent.isStopped = false;
         agent.speed = patrolSpeed;
+        SetState(GuardState.Patrol);
         GoToNextWaypoint();
     }
 
@@ -335,8 +390,7 @@ public class GuardEnemy : MonoBehaviour
             do
             {
                 next = Random.Range(0, waypoints.Length);
-            }
-            while (next == waypointIndex);
+            } while (next == waypointIndex);
 
             waypointIndex = next;
         }
