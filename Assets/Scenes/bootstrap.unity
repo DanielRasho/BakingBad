@@ -632,6 +632,30 @@ MonoBehaviour:
     pitchMax: 1
     delay: 0
     minInterval: 0.04
+  guardSuspicious:
+    clips:
+    - {fileID: 8300000, guid: 73a4a487f73cbac4abc1954a3a73fffe, type: 3}
+    volume: 0.363
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.75
+  guardDetect:
+    clips:
+    - {fileID: 8300000, guid: 9be7fb0ecf4bc5b4f9033269d12e921b, type: 3}
+    volume: 0.407
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.75
+  guardCatch:
+    clips:
+    - {fileID: 8300000, guid: 75687cf3f2524039ba1e913c1b7beb93, type: 3}
+    volume: 0.437
+    pitchMin: 1
+    pitchMax: 1
+    delay: 0
+    minInterval: 0.75
   sfxVoiceCount: 8
 --- !u!82 &1958387304
 AudioSource:

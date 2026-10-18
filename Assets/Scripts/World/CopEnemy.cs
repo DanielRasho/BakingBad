@@ -65,6 +65,11 @@ public class CopEnemy : MonoBehaviour
     [Tooltip("Pause after catching the player before returning to patrol.")] [SerializeField]
     private float stunSeconds = 3f;
 
+    [Header("Feedback")]
+    [Tooltip("Dibuja en el piso el area donde este guardia puede detectar al jugador.")]
+    [SerializeField]
+    private bool showDetectionRange = true;
+
     [Header("Debug")] [SerializeField] private bool drawGizmos = true;
 
     private NavMeshAgent agent;
@@ -104,10 +109,36 @@ public class CopEnemy : MonoBehaviour
         get { return Velocity.magnitude; }
     }
 
+    /// <summary>Radius used for a walking player carrying a cake.</summary>
+    public float DetectionRadius
+    {
+        get { return detectionRadius; }
+    }
+
+    /// <summary>
+    /// Radius that applies to the player right now (depends on sneaking and cakes).
+    /// 0 means the guard is ignoring the player.
+    /// </summary>
+    public float CurrentDetectionRadius
+    {
+        get { return player != null ? GetDetectionRadius() : detectionRadius; }
+    }
+
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         agent.speed = patrolSpeed;
+
+        // Feedback lives in its own components and only listens to this guard's events and properties.
+        if (GetComponent<CopAudio>() == null)
+        {
+            gameObject.AddComponent<CopAudio>();
+        }
+
+        if (showDetectionRange && GetComponent<CopDetectionRangeView>() == null)
+        {
+            gameObject.AddComponent<CopDetectionRangeView>();
+        }
     }
 
     private void Start()

@@ -47,6 +47,14 @@ public class AudioManager : MonoBehaviour
     [Tooltip("Error al entregar el pastel al prisionero equivocado.")]
     [SerializeField] private SfxCue orderDeliveredWrong = new SfxCue();
 
+    [Header("SFX - Guardias")]
+    [Tooltip("Cuando un guardia empieza a sospechar (el circulo se pone amarillo).")]
+    [SerializeField] private SfxCue guardSuspicious = new SfxCue(1f, 1f, 0f, 0.75f);
+    [Tooltip("Cuando un guardia termina de detectar al jugador y empieza a perseguirlo.")]
+    [SerializeField] private SfxCue guardDetect = new SfxCue(1f, 1f, 0f, 0.75f);
+    [Tooltip("Cuando un guardia atrapa al jugador y le quita dinero.")]
+    [SerializeField] private SfxCue guardCatch = new SfxCue(1f, 1f, 0f, 0.75f);
+
     [Header("SFX - Voces")]
     [Tooltip("Cuantos efectos pueden sonar al mismo tiempo.")]
     [SerializeField, Range(2, 16)] private int sfxVoiceCount = 8;
@@ -201,6 +209,15 @@ public class AudioManager : MonoBehaviour
                 break;
             case SfxId.OrderDeliveredWrong:
                 PlayCue(orderDeliveredWrong);
+                break;
+            case SfxId.GuardSuspicious:
+                PlayCue(guardSuspicious);
+                break;
+            case SfxId.GuardDetect:
+                PlayCue(guardDetect);
+                break;
+            case SfxId.GuardCatch:
+                PlayCue(guardCatch);
                 break;
         }
     }

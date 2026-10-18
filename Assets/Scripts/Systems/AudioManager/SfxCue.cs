@@ -9,7 +9,10 @@ public enum SfxId
     OrderPickup = 3,
     OrderDeliveredCorrect = 4,
     OrderDeliveredWrong = 5,
-    OrderActivate = 6
+    OrderActivate = 6,
+    GuardDetect = 7,
+    GuardCatch = 8,
+    GuardSuspicious = 9
 }
 
 [Serializable]
@@ -33,11 +36,12 @@ public class SfxCue
     {
     }
 
-    public SfxCue(float pitchMin, float pitchMax, float delay = 0f)
+    public SfxCue(float pitchMin, float pitchMax, float delay = 0f, float minInterval = 0.04f)
     {
         this.pitchMin = pitchMin;
         this.pitchMax = pitchMax;
         this.delay = delay;
+        this.minInterval = minInterval;
     }
 
     public float Volume
