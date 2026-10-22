@@ -17,7 +17,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public string payout;
         public int basePayout;
         public string orderTitle;
-        public string cakeColor;
+        public string cakeFlavor;
         public string topping;
         public string contrabandItem;
         public string cakeSize;
@@ -30,6 +30,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     {
         public string itemName;
         public Sprite icon;
+    }
+
+    [Serializable]
+    public class CakeFlavorEntry
+    {
+        public string flavorName;
+        [Tooltip("Cake sprites for Small, Medium and Large, in that order.")]
+        public Sprite[] sizeSprites;
     }
 
     [Serializable]
@@ -75,7 +83,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         RotateLeft,
         RotateRight,
         ZoomIn,
-        ZoomOut
+        ZoomOut,
+        ArrowLeft,
+        ArrowRight
     }
 
     private enum BakeResult
@@ -100,6 +110,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public float TargetRotationDegrees;
         public float TargetScale;
         public float PieceScale = 1f;
+        public string SelectedFlavor;
+        public bool FlavorMatched;
+        public int FlavorCarouselIndex;
         public CakeSizeOption SelectedCakeSize = CakeSizeOption.None;
         public SizeGameType SizeGame;
         public bool SizeGameAssigned;
@@ -113,7 +126,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public bool PiecePoseInitialized;
         public bool BakeInProgress;
         public float BakeProgressNormalized;
+        public float BakeDirection = 1f;
         public BakeResult BakeOutcome = BakeResult.None;
+        public BakeResult LastBakeMiss = BakeResult.None;
         public float PerfectBakeWindowStart;
         public float PerfectBakeWindowEnd;
         public string SelectedTopping;
@@ -163,20 +178,30 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private Sprite toppingSelectedSlotSprite;
     [Tooltip("Container shown as the drop target in the mold minigame.")]
     [SerializeField] private Sprite preparationContainerSprite;
-    [Tooltip("Cake sprites for Small, Medium and Large, in that order.")]
+    [Tooltip("Cake sprites for Small, Medium and Large, in that order. Used until a flavor is chosen.")]
     [SerializeField] private Sprite[] cakeSizeSprites;
+    [Tooltip("Flavors shown in the flavor carousel; flavorName must match cakeFlavor in the orders JSON.")]
+    [SerializeField] private CakeFlavorEntry[] cakeFlavors;
     [SerializeField] private CakeInventoryHud inventoryHud;
 
     [Header("Payout Penalties (fraction of base payout)")]
+    [SerializeField, Range(0f, 1f)] private float wrongFlavorPenalty = 0.2f;
     [SerializeField, Range(0f, 1f)] private float wrongSizePenalty = 0.2f;
     [SerializeField, Range(0f, 1f)] private float badPlacementPenalty = 0.2f;
-    [SerializeField, Range(0f, 1f)] private float undercookedPenalty = 0.2f;
-    [SerializeField, Range(0f, 1f)] private float burntPenalty = 0.3f;
     [SerializeField, Range(0f, 1f)] private float wrongToppingPenalty = 0.2f;
 
     [Header("Placement Buttons")]
     [SerializeField] private Sprite placementIconButtonSprite;
     [SerializeField] private Sprite placementConfirmButtonSprite;
+
+    [Header("Oven")]
+    [SerializeField] private Sprite ovenOffSprite;
+    [SerializeField] private Sprite ovenOnSprite;
+    [SerializeField] private Sprite ovenOnButtonSprite;
+    [SerializeField] private Sprite ovenOnButtonPressedSprite;
+    [SerializeField] private Sprite ovenOffButtonSprite;
+    [SerializeField] private Sprite ovenOffButtonPressedSprite;
+    [SerializeField] private Sprite burntCakeSprite;
 
     [Header("Dialogs")]
     [Tooltip("Same art as the pause menu so every popup looks alike.")]
@@ -195,8 +220,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private Color tabLockedColor = new Color(0.85f, 0.84f, 0.80f, 1f);
     [SerializeField] private Color tabActiveColor = new Color(1f, 0.92f, 0.76f, 1f);
 
+    private const int FlavorTabIndex = 0;
+    private const int SizeTabIndex = 1;
+    private const int PlacementTabIndex = 2;
+    private const int BakeTabIndex = 3;
+    private const int ToppingTabIndex = 4;
+
     private readonly string[] tabTitles =
     {
+        "Elegir sabor",
         "Seleccionar tamano",
         "Colocar objeto",
         "Hornear",
@@ -257,6 +289,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private const string WaitingOrderMessage = "Esperando orden para iniciar...";
     private const string InventoryFullMessage = "Inventario lleno\nEntrega un pastel antes de preparar otra orden.";
 
+    private Image flavorCakeImage;
+    private Text flavorNameText;
+    private Image[] flavorPageDots;
+    private Button flavorPreviousButton;
+    private Button flavorNextButton;
+    private Button flavorSelectButton;
+    private Text flavorFeedbackText;
+
     private Button[] sizeOptionButtons;
     private Image[] sizeOptionBackgrounds;
     private Text sizeFeedbackText;
@@ -273,6 +313,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private bool sizeSortValidated;
     private RuntimeOrder sizeGameBuiltFor;
     private static Sprite cakeSizeCylinderSprite;
+    private static Sprite flavorDotSprite;
 
     private RectTransform placementPlayArea;
     private RectTransform placementHoleRect;
@@ -292,12 +333,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private static readonly Dictionary<PlacementHoleShape, Sprite> placementHoleSprites = new Dictionary<PlacementHoleShape, Sprite>();
     private static readonly Dictionary<PlacementIcon, Sprite> placementIconSprites = new Dictionary<PlacementIcon, Sprite>();
 
-    private Image bakeProgressFillImage;
+    private Image bakeOvenImage;
+    private RectTransform bakeMarkerRect;
     private RectTransform bakePerfectZoneRect;
+    private Image bakeRawCakeImage;
     private Text bakeStatusText;
-    private Text bakeHintText;
-    private Button bakeActionButton;
-    private Text bakeButtonLabelText;
+    private Button bakeOffButton;
+    private Button bakeOnButton;
 
     private Button[] toppingOptionButtons;
     private Image[] toppingOptionBackgrounds;
@@ -322,7 +364,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private static readonly Vector2 PlacementPlayAreaSize = new Vector2(820f, 340f);
     private static readonly Vector2 PlacementPieceStartPosition = new Vector2(-270f, 0f);
     private static readonly float[] PlacementTargetScales = { 0.7f, 0.8f, 0.9f, 1.1f, 1.2f, 1.3f };
-    private const float BakeDurationSeconds = 4.5f;
+    // Fraction of the bar the marker crosses per second, back and forth.
+    private const float BakeMarkerSpeed = 0.6f;
+    // The oven art is laid out in its own pixels (ovenOff/ovenOn are 500x282) and scaled to the display size.
+    private static readonly Vector2 OvenSourceSize = new Vector2(500f, 282f);
+    private static readonly Vector2 OvenDisplaySize = new Vector2(760f, 429f);
     private const float PerfectBakeWindowWidth = 0.12f;
     private const float PerfectBakeWindowMinCenter = 0.26f;
     private const float PerfectBakeWindowMaxCenter = 0.74f;
@@ -399,7 +445,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 ? selectedOrder
                 : null;
             SetSelectedOrder(nextOrder, false);
-            ActivateTab(0, true);
+            ActivateTab(FlavorTabIndex, true);
         }
 
         RefreshAllUi();
@@ -766,7 +812,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         SetTimerSeconds(900f);
         SyncBoardSummary();
         SetSelectedOrder(null, false);
-        ActivateTab(0, true);
+        ActivateTab(FlavorTabIndex, true);
         isInitialized = true;
         ShowControlsPopup();
     }
@@ -1009,7 +1055,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         activePrepOrder = order;
         activePrepOrder.State = OrderRuntimeState.ActivePrep;
         AudioManager.Play(SfxId.OrderActivate);
-        ActivateTab(0, true);
+        ActivateTab(FlavorTabIndex, true);
         RefreshAllUi();
     }
 
@@ -1208,15 +1254,17 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void BuildRuntimeTabContent()
     {
-        if (tabPanels == null || tabPanels.Length < 4)
+        if (tabPanels == null || tabPanels.Length <= ToppingTabIndex)
         {
+            Debug.LogError("KitchenOrderPrepUIController needs " + (ToppingTabIndex + 1) + " tab panels (sabor, tamano, objeto, horno, topping).");
             return;
         }
 
-        BuildSizeTab(tabPanels[0].GetComponent<RectTransform>());
-        BuildPlacementTab(tabPanels[1].GetComponent<RectTransform>());
-        BuildBakeTab(tabPanels[2].GetComponent<RectTransform>());
-        BuildToppingTab(tabPanels[3].GetComponent<RectTransform>());
+        BuildFlavorTab(tabPanels[FlavorTabIndex].GetComponent<RectTransform>());
+        BuildSizeTab(tabPanels[SizeTabIndex].GetComponent<RectTransform>());
+        BuildPlacementTab(tabPanels[PlacementTabIndex].GetComponent<RectTransform>());
+        BuildBakeTab(tabPanels[BakeTabIndex].GetComponent<RectTransform>());
+        BuildToppingTab(tabPanels[ToppingTabIndex].GetComponent<RectTransform>());
     }
 
     private void BuildWaitingOrderState()
@@ -1287,6 +1335,181 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     {
         EnsurePlayerController();
         return playerController != null && playerController.Inventory.IsFull;
+    }
+
+    private void BuildFlavorTab(RectTransform panel)
+    {
+        if (panel == null)
+        {
+            return;
+        }
+
+        ClearChildren(panel);
+        Text title = CreateText("Instruction", panel, "Navega entre los pasteles y elige el del sabor pedido.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
+
+        flavorCakeImage = CreateImage("FlavorCake", panel, Color.white);
+        flavorCakeImage.preserveAspect = true;
+        flavorCakeImage.raycastTarget = false;
+        SetRect(flavorCakeImage.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, 10f), new Vector2(340f, 261f), new Vector2(0.5f, 0.5f));
+
+        // The name under each cake so the colors can't be mistaken for another flavor.
+        flavorNameText = CreateText("FlavorName", panel, string.Empty, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(flavorNameText.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, -146f), new Vector2(360f, 38f), new Vector2(0.5f, 0.5f));
+
+        flavorPreviousButton = CreatePlacementIconButton("PreviousFlavorButton", panel, PlacementIcon.ArrowLeft, Vector2.zero);
+        SetRect(flavorPreviousButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(-300f, 0f), new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
+        flavorPreviousButton.onClick.AddListener(() => MoveFlavorCarousel(-1));
+        ButtonSfx.Attach(flavorPreviousButton, SfxId.KitchenUiClick);
+
+        flavorNextButton = CreatePlacementIconButton("NextFlavorButton", panel, PlacementIcon.ArrowRight, Vector2.zero);
+        SetRect(flavorNextButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(300f, 0f), new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
+        flavorNextButton.onClick.AddListener(() => MoveFlavorCarousel(1));
+        ButtonSfx.Attach(flavorNextButton, SfxId.KitchenUiClick);
+
+        int flavorCount = cakeFlavors != null ? cakeFlavors.Length : 0;
+        flavorPageDots = new Image[flavorCount];
+        const float dotSpacing = 26f;
+        for (int i = 0; i < flavorCount; i++)
+        {
+            Image dot = CreateImage("FlavorDot_" + i, panel, Color.white);
+            dot.sprite = GetFlavorDotSprite();
+            dot.raycastTarget = false;
+            SetRect(dot.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2((i - (flavorCount - 1) * 0.5f) * dotSpacing, -182f), new Vector2(14f, 14f), new Vector2(0.5f, 0.5f));
+            flavorPageDots[i] = dot;
+        }
+
+        flavorSelectButton = CreateButton("SelectFlavorButton", panel, Color.white);
+        StylePlacementButton(flavorSelectButton, placementConfirmButtonSprite, true);
+        SetRect(flavorSelectButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 96f), new Vector2(320f, 84f), new Vector2(0.5f, 0.5f));
+        Text selectLabel = CreateText("Label", flavorSelectButton.GetComponent<RectTransform>(), "Elegir este pastel", 32, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(selectLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-40f, -20f), new Vector2(0.5f, 0.5f));
+        flavorSelectButton.onClick.AddListener(ConfirmFlavorSelection);
+        ButtonSfx.Attach(flavorSelectButton, SfxId.KitchenUiClick);
+
+        flavorFeedbackText = CreateText("FlavorFeedbackText", panel, "Selecciona el sabor del pastel.", 20, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(flavorFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(760f, 28f), new Vector2(0.5f, 0.5f));
+    }
+
+    private void MoveFlavorCarousel(int direction)
+    {
+        if (activePrepOrder == null || IsFlavorChosen(activePrepOrder) || cakeFlavors == null || cakeFlavors.Length == 0)
+        {
+            return;
+        }
+
+        int count = cakeFlavors.Length;
+        activePrepOrder.FlavorCarouselIndex = ((activePrepOrder.FlavorCarouselIndex + direction) % count + count) % count;
+        RefreshFlavorUi();
+    }
+
+    private void ConfirmFlavorSelection()
+    {
+        if (activePrepOrder == null || activePrepOrder.State != OrderRuntimeState.ActivePrep || IsFlavorChosen(activePrepOrder))
+        {
+            return;
+        }
+
+        CakeFlavorEntry flavor = GetCarouselFlavor(activePrepOrder);
+        if (flavor == null)
+        {
+            return;
+        }
+
+        // A wrong flavor is allowed; it only lowers the payout, like the topping.
+        activePrepOrder.SelectedFlavor = flavor.flavorName;
+        activePrepOrder.FlavorMatched = string.Equals(flavor.flavorName, activePrepOrder.Data.cakeFlavor, StringComparison.OrdinalIgnoreCase);
+        RefreshAllUi();
+        ActivateTab(SizeTabIndex, true);
+    }
+
+    private CakeFlavorEntry GetCarouselFlavor(RuntimeOrder order)
+    {
+        if (order == null || cakeFlavors == null || cakeFlavors.Length == 0)
+        {
+            return null;
+        }
+
+        return cakeFlavors[Mathf.Clamp(order.FlavorCarouselIndex, 0, cakeFlavors.Length - 1)];
+    }
+
+    private CakeFlavorEntry FindFlavor(string flavorName)
+    {
+        if (cakeFlavors == null || string.IsNullOrEmpty(flavorName))
+        {
+            return null;
+        }
+
+        for (int i = 0; i < cakeFlavors.Length; i++)
+        {
+            if (cakeFlavors[i] != null && string.Equals(cakeFlavors[i].flavorName, flavorName, StringComparison.OrdinalIgnoreCase))
+            {
+                return cakeFlavors[i];
+            }
+        }
+
+        return null;
+    }
+
+    private static Sprite GetFlavorSizeSprite(CakeFlavorEntry flavor, int sizeIndex)
+    {
+        if (flavor == null || flavor.sizeSprites == null || sizeIndex < 0 || sizeIndex >= flavor.sizeSprites.Length)
+        {
+            return null;
+        }
+
+        return flavor.sizeSprites[sizeIndex];
+    }
+
+    private static bool IsFlavorChosen(RuntimeOrder order)
+    {
+        return order != null && !string.IsNullOrEmpty(order.SelectedFlavor);
+    }
+
+    private void RefreshFlavorUi()
+    {
+        if (flavorCakeImage == null || flavorFeedbackText == null)
+        {
+            return;
+        }
+
+        bool canChoose = activePrepOrder != null && activePrepOrder.State == OrderRuntimeState.ActivePrep && !IsFlavorChosen(activePrepOrder);
+        flavorPreviousButton.interactable = canChoose;
+        flavorNextButton.interactable = canChoose;
+        flavorSelectButton.interactable = canChoose;
+
+        // Once chosen, the carousel stays on the picked cake.
+        CakeFlavorEntry shownFlavor = activePrepOrder != null && IsFlavorChosen(activePrepOrder)
+            ? FindFlavor(activePrepOrder.SelectedFlavor)
+            : GetCarouselFlavor(activePrepOrder);
+        Sprite cakeSprite = GetFlavorSizeSprite(shownFlavor, 2);
+        flavorCakeImage.sprite = cakeSprite;
+        flavorCakeImage.enabled = cakeSprite != null;
+        if (flavorNameText != null)
+        {
+            flavorNameText.text = shownFlavor != null ? shownFlavor.flavorName : string.Empty;
+        }
+
+        int shownIndex = shownFlavor != null ? Array.IndexOf(cakeFlavors, shownFlavor) : -1;
+        for (int i = 0; flavorPageDots != null && i < flavorPageDots.Length; i++)
+        {
+            flavorPageDots[i].color = i == shownIndex ? new Color(0.55f, 0.30f, 0.22f, 1f) : new Color(0.55f, 0.30f, 0.22f, 0.3f);
+        }
+
+        if (activePrepOrder == null)
+        {
+            flavorFeedbackText.text = "Bloqueado hasta seleccionar una orden.";
+        }
+        else if (IsFlavorChosen(activePrepOrder))
+        {
+            flavorFeedbackText.text = activePrepOrder.FlavorMatched
+                ? "Sabor correcto."
+                : "Ese no era el sabor pedido. Te pagaran menos por este pastel.";
+        }
+        else
+        {
+            flavorFeedbackText.text = "Usa las flechas para ver los pasteles y elige el de " + (activePrepOrder.Data.cakeFlavor ?? string.Empty).ToLowerInvariant() + ".";
+        }
     }
 
     private void BuildSizeTab(RectTransform panel)
@@ -1685,44 +1908,90 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         ClearChildren(panel);
-        Text title = CreateText("Instruction", panel, "Deten el horneado cuando el pastel este cocinado.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(620f, 40f), new Vector2(0.5f, 0.5f));
+        Text title = CreateText("Instruction", panel, "Apaga el horno con OFF cuando la linea pase por el area verde.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
-        RectTransform gaugeRoot = CreateRect("BakeGaugeRoot", panel);
-        SetRect(gaugeRoot, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, -10f), new Vector2(520f, 46f), new Vector2(0.5f, 0.5f));
+        bakeOvenImage = CreateImage("Oven", panel, Color.white);
+        bakeOvenImage.sprite = ovenOffSprite;
+        bakeOvenImage.preserveAspect = true;
+        bakeOvenImage.raycastTarget = false;
+        SetRect(bakeOvenImage.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -6f), OvenDisplaySize, new Vector2(0.5f, 0.5f));
+        RectTransform ovenRect = bakeOvenImage.rectTransform;
+
+        // The bar sits on the oven front, right under the glass.
+        RectTransform gaugeRoot = CreateRect("BakeGaugeRoot", ovenRect);
+        PlaceOnOven(gaugeRoot, new Vector2(201f, 244f), new Vector2(340f, 22f));
         Image gaugeBackground = gaugeRoot.gameObject.AddComponent<Image>();
         gaugeBackground.color = new Color(0.26f, 0.22f, 0.18f, 1f);
-
-        RectTransform fillRect = CreateRect("BakeFill", gaugeRoot);
-        SetRect(fillRect, new Vector2(0f, 0f), new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
-        bakeProgressFillImage = fillRect.gameObject.AddComponent<Image>();
-        bakeProgressFillImage.color = new Color(0.82f, 0.56f, 0.2f, 1f);
+        gaugeBackground.raycastTarget = false;
+        Outline gaugeOutline = gaugeRoot.gameObject.AddComponent<Outline>();
+        gaugeOutline.effectColor = new Color(0.30f, 0.10f, 0.12f, 1f);
+        gaugeOutline.effectDistance = new Vector2(2f, -2f);
 
         bakePerfectZoneRect = CreateRect("PerfectBakeZone", gaugeRoot);
-        bakePerfectZoneRect.anchorMin = new Vector2(0f, 0f);
-        bakePerfectZoneRect.anchorMax = new Vector2(0f, 1f);
         bakePerfectZoneRect.pivot = new Vector2(0f, 0.5f);
         Image perfectZoneImage = bakePerfectZoneRect.gameObject.AddComponent<Image>();
         perfectZoneImage.color = new Color(0.34f, 0.72f, 0.38f, 0.95f);
+        perfectZoneImage.raycastTarget = false;
 
-        Text rawLabel = CreateText("RawLabel", gaugeRoot, "Crudo", 16, FontStyle.Bold, TextAnchor.MiddleLeft);
-        SetRect(rawLabel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(4f, 18f), new Vector2(120f, 20f), new Vector2(0f, 0.5f));
+        bakeMarkerRect = CreateRect("BakeMarker", gaugeRoot);
+        Image markerImage = bakeMarkerRect.gameObject.AddComponent<Image>();
+        markerImage.color = new Color(1f, 0.96f, 0.86f, 1f);
+        markerImage.raycastTarget = false;
+        Outline markerOutline = bakeMarkerRect.gameObject.AddComponent<Outline>();
+        markerOutline.effectColor = new Color(0.30f, 0.10f, 0.12f, 1f);
+        markerOutline.effectDistance = new Vector2(1.5f, -1.5f);
+        SetBakeMarkerPosition(0f);
 
-        Text burntLabel = CreateText("BurntLabel", gaugeRoot, "Quemado", 16, FontStyle.Bold, TextAnchor.MiddleRight);
-        SetRect(burntLabel.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-4f, 18f), new Vector2(120f, 20f), new Vector2(1f, 0.5f));
+        // ON and OFF side by side on the control panel, above the knob; ON only works to retry after a miss.
+        bakeOnButton = CreateOvenButton("OnButton", ovenRect, ovenOnButtonSprite, ovenOnButtonPressedSprite, new Vector2(416f, 78f));
+        bakeOnButton.onClick.AddListener(HandleOvenOn);
+        bakeOffButton = CreateOvenButton("OffButton", ovenRect, ovenOffButtonSprite, ovenOffButtonPressedSprite, new Vector2(464f, 78f));
+        bakeOffButton.onClick.AddListener(HandleOvenOff);
 
-        bakeStatusText = CreateText("BakeStatusText", panel, "Estado: sin empezar", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(bakeStatusText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -94f), new Vector2(540f, 28f), new Vector2(0.5f, 0.5f));
+        // The two ends of the bar: raw on the left, burnt on the right.
+        bakeRawCakeImage = CreateBakeSideCake("RawCake", panel, null, -485f, "Crudo");
+        CreateBakeSideCake("BurntCake", panel, burntCakeSprite, 485f, "Quemado");
 
-        bakeHintText = CreateText("BakeHintText", panel, "Deten la barra dentro del area verde.", 18, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(bakeHintText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -122f), new Vector2(560f, 24f), new Vector2(0.5f, 0.5f));
+        bakeStatusText = CreateText("BakeStatusText", panel, string.Empty, 20, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(bakeStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(820f, 28f), new Vector2(0.5f, 0.5f));
+    }
 
-        bakeActionButton = CreateButton("BakeActionButton", panel, new Color(0.97f, 0.96f, 0.93f, 1f));
-        SetRect(bakeActionButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -162f), new Vector2(220f, 52f), new Vector2(0.5f, 0.5f));
-        bakeButtonLabelText = CreateText("Label", bakeActionButton.GetComponent<RectTransform>(), "Iniciar horneado", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(bakeButtonLabelText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
-        bakeActionButton.onClick.AddListener(HandleBakeAction);
-        ButtonSfx.Attach(bakeActionButton, SfxId.KitchenUiClick);
+    private Button CreateOvenButton(string objectName, RectTransform ovenRect, Sprite sprite, Sprite pressedSprite, Vector2 sourceCenter)
+    {
+        Button button = CreateButton(objectName, ovenRect, Color.white);
+        StylePlacementButton(button, sprite, false);
+        if (pressedSprite != null)
+        {
+            button.transition = Selectable.Transition.SpriteSwap;
+            SpriteState spriteState = button.spriteState;
+            spriteState.pressedSprite = pressedSprite;
+            button.spriteState = spriteState;
+        }
+
+        PlaceOnOven(button.GetComponent<RectTransform>(), sourceCenter, new Vector2(42f, 47f));
+        ButtonSfx.Attach(button, SfxId.KitchenUiClick);
+        return button;
+    }
+
+    private Image CreateBakeSideCake(string objectName, RectTransform panel, Sprite sprite, float x, string label)
+    {
+        Image cakeImage = CreateImage(objectName, panel, Color.white);
+        cakeImage.sprite = sprite;
+        cakeImage.preserveAspect = true;
+        cakeImage.raycastTarget = false;
+        SetRect(cakeImage.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, -120f), new Vector2(160f, 122f), new Vector2(0.5f, 0.5f));
+
+        Text labelText = CreateText(objectName + "Label", panel, label, 20, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, -200f), new Vector2(160f, 28f), new Vector2(0.5f, 0.5f));
+        return cakeImage;
+    }
+
+    // Positions a child of the oven image using coordinates measured on the oven art (origin top-left).
+    private static void PlaceOnOven(RectTransform rect, Vector2 sourceCenter, Vector2 sourceSize)
+    {
+        float scale = OvenDisplaySize.x / OvenSourceSize.x;
+        SetRect(rect, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(sourceCenter.x, -sourceCenter.y) * scale, sourceSize * scale, new Vector2(0.5f, 0.5f));
     }
 
     private void BuildToppingTab(RectTransform panel)
@@ -1827,7 +2096,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 UnityEngine.Random.Range(40f, PlacementPlayAreaSize.x * 0.5f - holeHalfSize - 10f),
                 UnityEngine.Random.Range(-(PlacementPlayAreaSize.y * 0.5f - holeHalfSize - 10f), PlacementPlayAreaSize.y * 0.5f - holeHalfSize - 10f)),
             TargetRotationDegrees = UnityEngine.Random.Range(0, 24) * PlacementRotationStep,
-            TargetScale = targetScale
+            TargetScale = targetScale,
+            // Random first cake so the carousel doesn't always open on the same flavor.
+            FlavorCarouselIndex = UnityEngine.Random.Range(0, cakeFlavors != null && cakeFlavors.Length > 0 ? cakeFlavors.Length : 1)
         };
     }
 
@@ -1963,7 +2234,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             activePrepOrder.State = OrderRuntimeState.ActivePrep;
         AudioManager.Play(SfxId.OrderActivate);
             RefreshAllUi();
-            ActivateTab(0, true);
+            ActivateTab(FlavorTabIndex, true);
             return;
         }
 
@@ -2006,7 +2277,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         sizeScaleRunning = false;
         ShowSizeGameFeedback("Tamano correcto.");
         RefreshAllUi();
-        ActivateTab(1, true);
+        ActivateTab(PlacementTabIndex, true);
     }
 
     private void ShowSizeGameFeedback(string message)
@@ -2080,30 +2351,31 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         activePrepOrder.PlacementCorrect = distance <= PlacementDistanceThreshold && angleDelta <= PlacementAngleThreshold && scaleDelta <= PlacementScaleThreshold;
         activePrepOrder.PlacementCompleted = true;
         activePrepOrder.PlacementScore = score;
+        // The oven turns on by itself; ON is only needed to retry after a miss.
+        BeginBakeAttempt(activePrepOrder);
         RefreshAllUi();
-        ActivateTab(2, true);
+        ActivateTab(BakeTabIndex, true);
     }
 
-    private void HandleBakeAction()
+    private void HandleOvenOff()
     {
-        if (activePrepOrder == null || !activePrepOrder.PlacementCompleted)
+        if (activePrepOrder == null || !activePrepOrder.BakeInProgress)
         {
             return;
         }
 
-        if (!activePrepOrder.BakeInProgress && activePrepOrder.BakeOutcome != BakeResult.None)
+        ResolveBake(activePrepOrder);
+    }
+
+    private void HandleOvenOn()
+    {
+        if (activePrepOrder == null || !activePrepOrder.PlacementCompleted || activePrepOrder.BakeInProgress || activePrepOrder.BakeOutcome != BakeResult.None)
         {
             return;
         }
 
-        if (!activePrepOrder.BakeInProgress)
-        {
-            BeginBakeAttempt(activePrepOrder);
-            RefreshBakeUi();
-            return;
-        }
-
-        ResolveBake(activePrepOrder, false);
+        BeginBakeAttempt(activePrepOrder);
+        RefreshBakeUi();
     }
 
     private void BeginBakeAttempt(RuntimeOrder order)
@@ -2114,8 +2386,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         order.BakeOutcome = BakeResult.None;
+        order.LastBakeMiss = BakeResult.None;
         order.BakeInProgress = true;
         order.BakeProgressNormalized = 0f;
+        order.BakeDirection = 1f;
         // Keep the zone the player already sees so it never jumps when the bar starts.
         EnsurePerfectBakeWindow(order);
     }
@@ -2227,6 +2501,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         RefreshDetailPanel();
         RefreshStageVisibility();
         RefreshTabAvailability();
+        RefreshFlavorUi();
         RefreshSizeTab();
         RefreshPlacementUi();
         RefreshBakeUi();
@@ -2287,7 +2562,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         OrderDefinition order = selectedOrder.Data;
         if (detailTitleText != null) detailTitleText.text = order.orderTitle;
         // The whole recipe lives in one text block so a wrapped long value pushes the next line down instead of overlapping it.
-        if (detailCakeColorText != null) detailCakeColorText.text = "Color de pastel: " + order.cakeColor + "\nTamano: " + GetCakeSizeLabel(selectedOrder.RequiredCakeSize) + "\nTopping: " + order.topping;
+        if (detailCakeColorText != null) detailCakeColorText.text = "Sabor: " + order.cakeFlavor + "\nTamano: " + GetCakeSizeLabel(selectedOrder.RequiredCakeSize) + "\nTopping: " + order.topping;
         if (detailToppingText != null) detailToppingText.text = string.Empty;
         if (detailItemLabelText != null) detailItemLabelText.text = "Objeto a colocar:";
         RefreshDetailItemIcon(order.contrabandItem);
@@ -2396,6 +2671,21 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
+        // The cakes take the chosen flavor's color, so the minigame waits for the flavor.
+        if (!IsFlavorChosen(activePrepOrder))
+        {
+            if (sizeGameRoot != null && sizeGameBuiltFor != activePrepOrder)
+            {
+                ClearChildren(sizeGameRoot);
+                sizeGamePieces.Clear();
+                sizeScaleRunning = false;
+                sizeGameBuiltFor = null;
+            }
+
+            sizeFeedbackText.text = "Primero elige el sabor del pastel.";
+            return;
+        }
+
         EnsureSizeGameAssigned(activePrepOrder);
         BuildSizeGame(activePrepOrder);
         if (activePrepOrder.SizeGame == SizeGameType.CorrectMold)
@@ -2465,63 +2755,59 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void RefreshBakeUi()
     {
-        if (bakeStatusText == null || bakeActionButton == null || bakeButtonLabelText == null || bakeProgressFillImage == null)
+        if (bakeStatusText == null || bakeOvenImage == null || bakeOffButton == null || bakeOnButton == null)
         {
             return;
         }
 
+        bool baking = activePrepOrder != null && activePrepOrder.BakeInProgress;
+        bakeOvenImage.sprite = baking && ovenOnSprite != null ? ovenOnSprite : ovenOffSprite;
+        if (bakeRawCakeImage != null)
+        {
+            bakeRawCakeImage.sprite = GetSizeSprite(2);
+        }
+
+        bool canRetry = activePrepOrder != null && activePrepOrder.PlacementCompleted && !baking && activePrepOrder.BakeOutcome == BakeResult.None;
+        SetOvenButtonInteractable(bakeOffButton, baking);
+        // Both stay visible as a pair; each one is dimmed while it can't be used.
+        SetOvenButtonInteractable(bakeOnButton, canRetry);
+        bakeStatusText.color = Color.black;
+
         if (activePrepOrder == null)
         {
-            bakeStatusText.text = "Estado: bloqueado";
-            if (bakeHintText != null) bakeHintText.text = "Deten la barra dentro del area verde.";
-            bakeActionButton.interactable = false;
-            bakeButtonLabelText.text = "Iniciar horneado";
-            SetBakeFillAmount(0f);
+            bakeStatusText.text = "Bloqueado hasta seleccionar una orden.";
+            SetBakeMarkerPosition(0f);
             RefreshPerfectBakeZoneUi(null);
             return;
         }
 
+        RefreshPerfectBakeZoneUi(activePrepOrder);
+        SetBakeMarkerPosition(activePrepOrder.BakeProgressNormalized);
+
         if (!activePrepOrder.PlacementCompleted)
         {
-            bakeStatusText.text = "Estado: bloqueado hasta colocar el objeto";
-            if (bakeHintText != null) bakeHintText.text = "Primero oculta el objeto dentro del pastel.";
-            bakeActionButton.interactable = false;
-            bakeButtonLabelText.text = "Iniciar horneado";
-            SetBakeFillAmount(0f);
-            RefreshPerfectBakeZoneUi(activePrepOrder);
-            return;
+            bakeStatusText.text = "Primero oculta el objeto dentro del pastel.";
         }
-
-        RefreshPerfectBakeZoneUi(activePrepOrder);
-        SetBakeFillAmount(activePrepOrder.BakeProgressNormalized);
-
-        if (activePrepOrder.BakeInProgress)
+        else if (baking)
         {
-            bakeStatusText.text = "Estado: horneando";
-            if (bakeHintText != null) bakeHintText.text = "Saca el pastel dentro del area verde para que quede perfecto.";
-            bakeActionButton.interactable = true;
-            bakeButtonLabelText.text = "Sacar del horno";
-            return;
+            bakeStatusText.text = "Presiona OFF cuando la linea este dentro del area verde.";
         }
-
-        if (activePrepOrder.BakeOutcome == BakeResult.None)
+        else if (activePrepOrder.BakeOutcome == BakeResult.Perfect)
         {
-            bakeStatusText.text = "Estado: listo para hornear";
-            if (bakeHintText != null) bakeHintText.text = "Deten el horneado cuando la barra llegue al area verde.";
-            bakeActionButton.interactable = true;
-            bakeButtonLabelText.text = "Iniciar horneado";
-            return;
+            bakeStatusText.text = "Perfecto. Ya puedes pasar al topping.";
         }
-
-        bakeStatusText.text = "Estado: " + GetBakeResultLabel(activePrepOrder.BakeOutcome);
-        bakeActionButton.interactable = false;
-        bakeButtonLabelText.text = "Horneado terminado";
-        if (bakeHintText != null)
+        else
         {
-            bakeHintText.text = activePrepOrder.BakeOutcome == BakeResult.Perfect
-                ? "Perfecto. Ya puedes pasar al topping."
-                : "No quedo en su punto. Te pagaran menos por este pastel.";
+            bakeStatusText.text = (activePrepOrder.LastBakeMiss == BakeResult.Undercooked ? "Quedo crudo." : "Se quemo.") + " Presiona ON para intentarlo otra vez.";
+            bakeStatusText.color = new Color(0.62f, 0.14f, 0.10f, 1f);
         }
+    }
+
+    private static void SetOvenButtonInteractable(Button button, bool interactable)
+    {
+        button.interactable = interactable;
+        // SpriteSwap has no disabled tint, so a locked button is dimmed by hand.
+        button.image.color = interactable ? Color.white : new Color(0.7f, 0.7f, 0.7f, 1f);
     }
 
     private void RefreshToppingUi()
@@ -2621,13 +2907,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         switch (tabIndex)
         {
-            case 0:
+            case FlavorTabIndex:
                 return true;
-            case 1:
+            case SizeTabIndex:
+                return IsFlavorChosen(activePrepOrder);
+            case PlacementTabIndex:
                 return IsSizeChosen(activePrepOrder);
-            case 2:
+            case BakeTabIndex:
                 return activePrepOrder.PlacementCompleted;
-            case 3:
+            case ToppingTabIndex:
                 return activePrepOrder.BakeOutcome != BakeResult.None;
             default:
                 return false;
@@ -2636,27 +2924,27 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private int GetFirstAvailableTabIndex(RuntimeOrder order)
     {
-        if (order == null || order.State != OrderRuntimeState.ActivePrep)
+        if (order == null || order.State != OrderRuntimeState.ActivePrep || !IsFlavorChosen(order))
         {
-            return 0;
+            return FlavorTabIndex;
         }
 
         if (!IsSizeChosen(order))
         {
-            return 0;
+            return SizeTabIndex;
         }
 
         if (!order.PlacementCompleted)
         {
-            return 1;
+            return PlacementTabIndex;
         }
 
         if (order.BakeOutcome == BakeResult.None)
         {
-            return 2;
+            return BakeTabIndex;
         }
 
-        return 3;
+        return ToppingTabIndex;
     }
 
     private void SetMenuVisible(bool visible)
@@ -2732,18 +3020,24 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        activePrepOrder.BakeProgressNormalized += Time.deltaTime / BakeDurationSeconds;
-        if (activePrepOrder.BakeProgressNormalized >= 1f)
+        // The marker bounces between both ends of the bar until the player presses OFF.
+        float progress = activePrepOrder.BakeProgressNormalized + activePrepOrder.BakeDirection * Time.deltaTime * BakeMarkerSpeed;
+        if (progress >= 1f)
         {
-            activePrepOrder.BakeProgressNormalized = 1f;
-            ResolveBake(activePrepOrder, true);
-            return;
+            progress = 2f - progress;
+            activePrepOrder.BakeDirection = -1f;
+        }
+        else if (progress <= 0f)
+        {
+            progress = -progress;
+            activePrepOrder.BakeDirection = 1f;
         }
 
-        RefreshBakeUi();
+        activePrepOrder.BakeProgressNormalized = Mathf.Clamp01(progress);
+        SetBakeMarkerPosition(activePrepOrder.BakeProgressNormalized);
     }
 
-    private void ResolveBake(RuntimeOrder order, bool forcedBurnt)
+    private void ResolveBake(RuntimeOrder order)
     {
         if (order == null)
         {
@@ -2752,26 +3046,17 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         order.BakeInProgress = false;
 
-        if (forcedBurnt)
-        {
-            order.BakeOutcome = BakeResult.Burnt;
-        }
-        else if (order.BakeProgressNormalized < order.PerfectBakeWindowStart)
-        {
-            order.BakeOutcome = BakeResult.Undercooked;
-        }
-        else if (order.BakeProgressNormalized <= order.PerfectBakeWindowEnd)
+        if (order.BakeProgressNormalized >= order.PerfectBakeWindowStart && order.BakeProgressNormalized <= order.PerfectBakeWindowEnd)
         {
             order.BakeOutcome = BakeResult.Perfect;
-        }
-        else
-        {
-            order.BakeOutcome = BakeResult.Burnt;
+            RefreshAllUi();
+            ActivateTab(ToppingTabIndex, true);
+            return;
         }
 
-        // Undercooked or burnt cakes still move on to the topping; the result only lowers the payout.
-        RefreshAllUi();
-        ActivateTab(3, true);
+        // A miss doesn't finish the cake: the player turns the oven back on with ON and tries again.
+        order.LastBakeMiss = order.BakeProgressNormalized < order.PerfectBakeWindowStart ? BakeResult.Undercooked : BakeResult.Burnt;
+        RefreshBakeUi();
     }
 
     private void ConfigurePlacementRuntimeOrder(RuntimeOrder order)
@@ -2868,10 +3153,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         float penalty = 0f;
+        if (!order.FlavorMatched) penalty += wrongFlavorPenalty;
         if (!order.SizeMatched) penalty += wrongSizePenalty;
         if (!order.PlacementCorrect) penalty += badPlacementPenalty;
-        if (order.BakeOutcome == BakeResult.Undercooked) penalty += undercookedPenalty;
-        if (order.BakeOutcome == BakeResult.Burnt) penalty += burntPenalty;
         if (!order.ToppingMatched) penalty += wrongToppingPenalty;
 
         return Mathf.Max(0, Mathf.RoundToInt(order.BasePayoutValue * (1f - Mathf.Clamp01(penalty))));
@@ -2880,10 +3164,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private static List<string> GetCakeMistakes(RuntimeOrder order)
     {
         List<string> mistakes = new List<string>();
+        if (!order.FlavorMatched) mistakes.Add("sabor");
         if (!order.SizeMatched) mistakes.Add("tamano");
         if (!order.PlacementCorrect) mistakes.Add("objeto");
-        if (order.BakeOutcome == BakeResult.Undercooked) mistakes.Add("crudo");
-        if (order.BakeOutcome == BakeResult.Burnt) mistakes.Add("quemado");
         if (!order.ToppingMatched) mistakes.Add("topping");
         return mistakes;
     }
@@ -2936,18 +3219,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
     }
 
-    private void SetBakeFillAmount(float normalized)
+    private void SetBakeMarkerPosition(float normalized)
     {
-        if (bakeProgressFillImage == null)
+        if (bakeMarkerRect == null)
         {
             return;
         }
 
-        RectTransform fillRect = bakeProgressFillImage.rectTransform;
-        fillRect.anchorMin = new Vector2(0f, 0f);
-        fillRect.anchorMax = new Vector2(Mathf.Clamp01(normalized), 1f);
-        fillRect.offsetMin = Vector2.zero;
-        fillRect.offsetMax = Vector2.zero;
+        // Taller than the bar so the line stays visible over the green zone.
+        float x = Mathf.Clamp01(normalized);
+        SetRect(bakeMarkerRect, new Vector2(x, 0f), new Vector2(x, 1f), Vector2.zero, new Vector2(6f, 16f), new Vector2(0.5f, 0.5f));
     }
 
     private static CakeSizeOption ParseCakeSize(string value)
@@ -3046,26 +3327,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 return "Esperando objeto";
             }
 
+            if (IsFlavorChosen(order))
+            {
+                return "Esperando tamano";
+            }
+
             return "Preparando";
         }
 
         return "Pendiente";
-    }
-
-    private static string GetBakeResultLabel(BakeResult result)
-    {
-        switch (result)
-        {
-            case BakeResult.Undercooked:
-                return "crudo";
-            case BakeResult.Perfect:
-                return "perfecto";
-            case BakeResult.Burnt:
-                return "quemado";
-            case BakeResult.None:
-            default:
-                return "sin empezar";
-        }
     }
 
     private static int GetDisplayPayout(RuntimeOrder order)
@@ -3081,37 +3351,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         return order.BasePayoutValue;
-    }
-
-    private static Color GetCakeColor(string colorName)
-    {
-        if (string.IsNullOrEmpty(colorName))
-        {
-            return new Color(0.95f, 0.87f, 0.72f, 1f);
-        }
-
-        string normalized = colorName.Trim().ToLowerInvariant();
-        if (normalized.Contains("rosa"))
-        {
-            return new Color(0.96f, 0.62f, 0.74f, 1f);
-        }
-
-        if (normalized.Contains("mora") || normalized.Contains("morado"))
-        {
-            return new Color(0.60f, 0.45f, 0.78f, 1f);
-        }
-
-        if (normalized.Contains("blanco") || normalized.Contains("crema") || normalized.Contains("beige"))
-        {
-            return new Color(0.95f, 0.91f, 0.82f, 1f);
-        }
-
-        if (normalized.Contains("cafe") || normalized.Contains("choco"))
-        {
-            return new Color(0.46f, 0.28f, 0.16f, 1f);
-        }
-
-        return new Color(0.95f, 0.87f, 0.72f, 1f);
     }
 
     private void BuildResultsMenu()
@@ -3347,6 +3586,18 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return image;
     }
 
+    private static Sprite GetFlavorDotSprite()
+    {
+        if (flavorDotSprite != null)
+        {
+            return flavorDotSprite;
+        }
+
+        const int size = 32;
+        flavorDotSprite = ProceduralSprites.Create("FlavorDot", size, size, new Vector2(0.5f, 0.5f), (x, y) => new Vector2(x - size * 0.5f, y - size * 0.5f).magnitude <= size * 0.5f - 1f ? Color.white : Color.clear);
+        return flavorDotSprite;
+    }
+
     private static Sprite GetCakeSizeCylinderSprite()
     {
         if (cakeSizeCylinderSprite != null)
@@ -3362,6 +3613,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private Sprite GetSizeSprite(int sizeIndex)
     {
+        // The size minigame shows cakes in the flavor the player just picked.
+        Sprite flavorSprite = activePrepOrder != null ? GetFlavorSizeSprite(FindFlavor(activePrepOrder.SelectedFlavor), sizeIndex) : null;
+        if (flavorSprite != null)
+        {
+            return flavorSprite;
+        }
+
         if (cakeSizeSprites != null && sizeIndex >= 0 && sizeIndex < cakeSizeSprites.Length && cakeSizeSprites[sizeIndex] != null)
         {
             return cakeSizeSprites[sizeIndex];
@@ -3468,6 +3726,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 // Rotate right is the mirror image of rotate left.
                 Vector2 point = new Vector2(icon == PlacementIcon.RotateRight ? 64f - px : px, py);
                 shapeDistance = RotateArrowDistance(point);
+                break;
+            case PlacementIcon.ArrowLeft:
+            case PlacementIcon.ArrowRight:
+                // Arrow right is the mirror image of arrow left.
+                Vector2 arrowPoint = new Vector2(icon == PlacementIcon.ArrowRight ? 64f - px : px, py);
+                shapeDistance = ProceduralSprites.PolygonDistance(arrowPoint, new[]
+                {
+                    new Vector2(12f, 32f), new Vector2(32f, 51f), new Vector2(32f, 40f), new Vector2(52f, 40f),
+                    new Vector2(52f, 24f), new Vector2(32f, 24f), new Vector2(32f, 13f)
+                });
                 break;
             default:
                 Vector2 lensCenter = new Vector2(27f, 37f);

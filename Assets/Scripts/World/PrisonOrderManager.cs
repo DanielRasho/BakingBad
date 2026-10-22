@@ -502,7 +502,7 @@ public class PrisonOrderManager : MonoBehaviour
             payout = source.payout,
             basePayout = source.basePayout,
             orderTitle = source.orderTitle,
-            cakeColor = source.cakeColor,
+            cakeFlavor = source.cakeFlavor,
             topping = source.topping,
             contrabandItem = source.contrabandItem,
             cakeSize = source.cakeSize,

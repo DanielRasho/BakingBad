@@ -136,7 +136,7 @@ GameObject:
   - component: {fileID: 33883418}
   - component: {fileID: 33883423}
   m_Layer: 0
-  m_Name: Tab_1
+  m_Name: Tab_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -319,7 +319,7 @@ GameObject:
   m_Component:
   - component: {fileID: 54579422}
   m_Layer: 0
-  m_Name: TabPanel_0
+  m_Name: TabPanel_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1418,6 +1418,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1301338773}
   - {fileID: 54579422}
   - {fileID: 1590861257}
   - {fileID: 1643788098}
@@ -1441,7 +1442,7 @@ GameObject:
   - component: {fileID: 306896467}
   - component: {fileID: 306896466}
   m_Layer: 0
-  m_Name: Tab_1Label
+  m_Name: Tab_2Label
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1582,6 +1583,85 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 307136659}
+  m_CullTransparentMesh: 1
+--- !u!1 &318877833
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 318877834}
+  - component: {fileID: 318877836}
+  - component: {fileID: 318877835}
+  m_Layer: 0
+  m_Name: Tab_0Label
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &318877834
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 318877833}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 846128254}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: -16, y: -16}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &318877835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 318877833}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+  m_Material: {fileID: 0}
+  m_Color: {r: 0, g: 0, b: 0, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
+    m_FontSize: 30
+    m_FontStyle: 1
+    m_BestFit: 1
+    m_MinSize: 14
+    m_MaxSize: 30
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: Elegir sabor
+--- !u!222 &318877836
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 318877833}
   m_CullTransparentMesh: 1
 --- !u!1 &347586933
 GameObject:
@@ -2007,6 +2087,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 846128254}
   - {fileID: 1825040625}
   - {fileID: 33883417}
   - {fileID: 1181935378}
@@ -2212,7 +2293,7 @@ GameObject:
   m_Component:
   - component: {fileID: 727051188}
   m_Layer: 0
-  m_Name: TabPanel_3
+  m_Name: TabPanel_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2334,6 +2415,196 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 741579652}
   m_CullTransparentMesh: 1
+--- !u!1 &846128253
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 846128254}
+  - component: {fileID: 846128259}
+  - component: {fileID: 846128260}
+  - component: {fileID: 846128261}
+  - component: {fileID: 846128258}
+  - component: {fileID: 846128257}
+  - component: {fileID: 846128256}
+  - component: {fileID: 846128255}
+  m_Layer: 0
+  m_Name: Tab_0
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &846128254
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 318877834}
+  m_Father: {fileID: 674960231}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &846128255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c6a68dbe95c5924db90686e195dfd64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InputSystemUIButtonProxy
+  targetGraphic: {fileID: 846128260}
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  geometryHoverColor: {r: 0.15, g: 0.8, b: 1, a: 1}
+  eventHoverColor: {r: 0.2, g: 1, b: 0.35, a: 1}
+  pressedColor: {r: 1, g: 0.45, b: 0.1, a: 1}
+--- !u!114 &846128256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: -1
+  m_PreferredHeight: 82
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
+--- !u!114 &846128257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dc8000cadf7c8140ae3c23ada961c1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CursorChange
+  cursorOnHover: 1
+--- !u!114 &846128258
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
+  m_EffectColor: {r: 0, g: 0, b: 0, a: 1}
+  m_EffectDistance: {x: 1, y: -1}
+  m_UseGraphicAlpha: 1
+--- !u!222 &846128259
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_CullTransparentMesh: 1
+--- !u!114 &846128260
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 44d00688808f6524a972b4df5878a9c6, type: 3}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &846128261
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 846128253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 0
+  m_TargetGraphic: {fileID: 846128260}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &889386710
 GameObject:
   m_ObjectHideFlags: 0
@@ -2635,7 +2906,7 @@ GameObject:
   - component: {fileID: 1029491240}
   - component: {fileID: 1029491239}
   m_Layer: 0
-  m_Name: Tab_0Label
+  m_Name: Tab_1Label
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2943,7 +3214,7 @@ GameObject:
   - component: {fileID: 1107480021}
   - component: {fileID: 1107480020}
   m_Layer: 0
-  m_Name: Tab_3Label
+  m_Name: Tab_4Label
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3106,7 +3377,7 @@ GameObject:
   - component: {fileID: 1181935379}
   - component: {fileID: 1181935384}
   m_Layer: 0
-  m_Name: Tab_2
+  m_Name: Tab_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3371,6 +3642,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1286810368}
   m_CullTransparentMesh: 1
+--- !u!1 &1301338772
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1301338773}
+  m_Layer: 0
+  m_Name: TabPanel_0
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1301338773
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1301338772}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 300507362}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1303101063
 GameObject:
   m_ObjectHideFlags: 0
@@ -3388,7 +3694,7 @@ GameObject:
   - component: {fileID: 1303101065}
   - component: {fileID: 1303101070}
   m_Layer: 0
-  m_Name: Tab_3
+  m_Name: Tab_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4079,16 +4385,19 @@ MonoBehaviour:
   spawnFirstOrderImmediately: 1
   logOrderBoard: 0
   tabButtons:
+  - {fileID: 846128261}
   - {fileID: 1825040630}
   - {fileID: 33883422}
   - {fileID: 1181935383}
   - {fileID: 1303101069}
   tabBackgrounds:
+  - {fileID: 846128260}
   - {fileID: 1825040629}
   - {fileID: 33883421}
   - {fileID: 1181935382}
   - {fileID: 1303101068}
   tabPanels:
+  - {fileID: 1301338772}
   - {fileID: 54579421}
   - {fileID: 1590861256}
   - {fileID: 1643788097}
@@ -4144,14 +4453,36 @@ MonoBehaviour:
   - {fileID: -1321192982, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
   - {fileID: 1663483032, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
   - {fileID: 290995605, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+  cakeFlavors:
+  - flavorName: Fresa
+    sizeSprites:
+    - {fileID: 2131779488, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+    - {fileID: -296049101, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+    - {fileID: -1666352534, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+  - flavorName: Vainilla
+    sizeSprites:
+    - {fileID: -1321192982, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+    - {fileID: 1663483032, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+    - {fileID: 290995605, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+  - flavorName: Chocolate
+    sizeSprites:
+    - {fileID: -1452433689, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+    - {fileID: -939228315, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+    - {fileID: 814501435, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
   inventoryHud: {fileID: 1495665895}
+  wrongFlavorPenalty: 0.2
   wrongSizePenalty: 0.2
   badPlacementPenalty: 0.2
-  undercookedPenalty: 0.2
-  burntPenalty: 0.3
   wrongToppingPenalty: 0.2
   placementIconButtonSprite: {fileID: 21300000, guid: 69860b5c89cd9d04fb056f3b559d069d, type: 3}
   placementConfirmButtonSprite: {fileID: 21300000, guid: 1f0b376ccf288f242b20382496e340eb, type: 3}
+  ovenOffSprite: {fileID: 21300000, guid: 568c46d82f1ef504d9ddc120d5c0ef4f, type: 3}
+  ovenOnSprite: {fileID: 21300000, guid: f3db76e1dc3642740beabb09dca19f0c, type: 3}
+  ovenOnButtonSprite: {fileID: 2088605603, guid: 9443cfa0f976ae84ba2854f34c92c334, type: 3}
+  ovenOnButtonPressedSprite: {fileID: -1661672240, guid: 9443cfa0f976ae84ba2854f34c92c334, type: 3}
+  ovenOffButtonSprite: {fileID: 1679362588, guid: 9443cfa0f976ae84ba2854f34c92c334, type: 3}
+  ovenOffButtonPressedSprite: {fileID: -1174461375, guid: 9443cfa0f976ae84ba2854f34c92c334, type: 3}
+  burntCakeSprite: {fileID: 21300000, guid: 5d5ad8e5961f2364b86be13d1d66e3fb, type: 3}
   dialogPanelSprite: {fileID: 21300000, guid: e16fda980e9d0f34d8065229536869e7, type: 3}
   dialogPrimaryButtonSprite: {fileID: 21300000, guid: 1f0b376ccf288f242b20382496e340eb, type: 3}
   dialogSecondaryButtonSprite: {fileID: 21300000, guid: 5087539c2ee68cf4195797e71af5bbf4, type: 3}
@@ -4444,7 +4775,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1590861257}
   m_Layer: 0
-  m_Name: TabPanel_1
+  m_Name: TabPanel_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4652,7 +4983,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1643788098}
   m_Layer: 0
-  m_Name: TabPanel_2
+  m_Name: TabPanel_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5164,7 +5495,7 @@ GameObject:
   - component: {fileID: 1825040626}
   - component: {fileID: 1825040631}
   m_Layer: 0
-  m_Name: Tab_0
+  m_Name: Tab_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6275,7 +6606,7 @@ GameObject:
   - component: {fileID: 2133330391}
   - component: {fileID: 2133330390}
   m_Layer: 0
-  m_Name: Tab_2Label
+  m_Name: Tab_3Label
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
