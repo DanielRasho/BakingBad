@@ -13,7 +13,7 @@ public class OvercookedStyleCamera : MonoBehaviour
     [SerializeField] private Transform target;
     [SerializeField] private CameraAngle angle = CameraAngle.Angle45;
 
-    [Header("Player Occlusion")]
+    [Header("Player Occlusion (only objects with OcclusionFadeTarget)")]
     [SerializeField] private bool fadeOccludingObjects = true;
     [SerializeField, Range(0.05f, 1f)] private float occludedAlpha = 0.22f;
     [SerializeField, Min(0.01f)] private float fadeDuration = 0.18f;
@@ -21,7 +21,6 @@ public class OvercookedStyleCamera : MonoBehaviour
     [SerializeField] private bool fadeNearbyTallObjects = true;
     [SerializeField, Min(0.1f)] private float nearbyFadeRadius = 1.15f;
     [SerializeField, Min(0f)] private float nearbyMinimumHeight = 0.65f;
-    [SerializeField] private LayerMask occluderMask = ~0;
 
     private const float CameraDistance = 7f;
     private const float FieldOfView = 40f;
@@ -29,11 +28,8 @@ public class OvercookedStyleCamera : MonoBehaviour
 
     private Camera cachedCamera;
     private Shader occlusionFadeShader;
-    private readonly RaycastHit[] occlusionHits = new RaycastHit[48];
-    private readonly Collider[] nearbyOccluderHits = new Collider[64];
     private readonly HashSet<Renderer> currentOccluders = new HashSet<Renderer>();
     private readonly Dictionary<Renderer, FadeState> fadeStates = new Dictionary<Renderer, FadeState>();
-    private readonly Dictionary<Collider, Renderer[]> occluderRendererCache = new Dictionary<Collider, Renderer[]>();
     private readonly List<Renderer> fadeStateBuffer = new List<Renderer>();
 
     private static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
@@ -146,112 +142,62 @@ public class OvercookedStyleCamera : MonoBehaviour
             Vector3 focusPoint = target.position + LookAtOffset;
             Vector3 direction = focusPoint - transform.position;
             float distance = direction.magnitude;
-
             if (distance > 0.01f)
             {
-                int hitCount = Physics.SphereCastNonAlloc(
-                    transform.position,
-                    sphereCastRadius,
-                    direction / distance,
-                    occlusionHits,
-                    distance,
-                    occluderMask,
-                    QueryTriggerInteraction.Ignore);
-
-                for (int i = 0; i < hitCount; i++)
+                Ray viewRay = new Ray(transform.position, direction / distance);
+                IReadOnlyList<OcclusionFadeTarget> fadeTargets = OcclusionFadeTarget.ActiveTargets;
+                for (int i = 0; i < fadeTargets.Count; i++)
                 {
-                    Collider hitCollider = occlusionHits[i].collider;
-                    if (hitCollider == null || hitCollider.transform.IsChildOf(target))
+                    if (IsHidingPlayer(fadeTargets[i], viewRay, distance))
                     {
-                        continue;
+                        AddOccludingRenderers(fadeTargets[i]);
                     }
-
-                    AddOccludingRenderers(hitCollider);
                 }
-            }
-
-            if (fadeNearbyTallObjects)
-            {
-                AddNearbyTallOccluders();
             }
         }
 
         UpdateFadeStates();
     }
 
-    private void AddOccludingRenderers(Collider hitCollider)
+    // Only objects marked with OcclusionFadeTarget (the cell entrances) are checked; everything else stays opaque.
+    private bool IsHidingPlayer(OcclusionFadeTarget fadeTarget, Ray viewRay, float distance)
     {
-        if (!occluderRendererCache.TryGetValue(hitCollider, out Renderer[] renderers))
+        Vector3 nearbyCenter = target.position + Vector3.up * 0.5f;
+        float minimumWorldHeight = target.position.y + nearbyMinimumHeight;
+        Renderer[] renderers = fadeTarget.Renderers;
+        for (int i = 0; i < renderers.Length; i++)
         {
-            CacheOccluderRenderers(hitCollider, out renderers);
+            if (!IsValidOccluder(renderers[i]))
+            {
+                continue;
+            }
+
+            Bounds bounds = renderers[i].bounds;
+            if (fadeNearbyTallObjects && bounds.max.y >= minimumWorldHeight && bounds.SqrDistance(nearbyCenter) <= nearbyFadeRadius * nearbyFadeRadius)
+            {
+                return true;
+            }
+
+            bounds.Expand(sphereCastRadius * 2f);
+            float hitDistance;
+            if (bounds.IntersectRay(viewRay, out hitDistance) && hitDistance <= distance)
+            {
+                return true;
+            }
         }
 
+        return false;
+    }
+
+    private void AddOccludingRenderers(OcclusionFadeTarget fadeTarget)
+    {
+        Renderer[] renderers = fadeTarget.Renderers;
         for (int i = 0; i < renderers.Length; i++)
         {
             if (IsValidOccluder(renderers[i]))
             {
                 currentOccluders.Add(renderers[i]);
             }
-        }
-    }
-
-    private void CacheOccluderRenderers(Collider hitCollider, out Renderer[] renderers)
-    {
-        List<Renderer> discovered = new List<Renderer>();
-        Transform hitTransform = hitCollider.transform;
-        AddUniqueRenderer(discovered, hitTransform.GetComponent<Renderer>());
-        AddUniqueRenderer(discovered, hitTransform.GetComponentInParent<Renderer>());
-
-        Renderer[] childRenderers = hitTransform.GetComponentsInChildren<Renderer>(true);
-        for (int i = 0; i < childRenderers.Length; i++)
-        {
-            AddUniqueRenderer(discovered, childRenderers[i]);
-        }
-
-        renderers = discovered.ToArray();
-        occluderRendererCache[hitCollider] = renderers;
-    }
-
-    private void AddNearbyTallOccluders()
-    {
-        Vector3 center = target.position + Vector3.up * 0.5f;
-        int hitCount = Physics.OverlapSphereNonAlloc(
-            center,
-            nearbyFadeRadius,
-            nearbyOccluderHits,
-            occluderMask,
-            QueryTriggerInteraction.Ignore);
-
-        float minimumWorldHeight = target.position.y + nearbyMinimumHeight;
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider hitCollider = nearbyOccluderHits[i];
-            if (hitCollider == null || hitCollider.transform.IsChildOf(target))
-            {
-                continue;
-            }
-
-            if (!occluderRendererCache.TryGetValue(hitCollider, out Renderer[] renderers))
-            {
-                CacheOccluderRenderers(hitCollider, out renderers);
-            }
-
-            for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
-            {
-                Renderer renderer = renderers[rendererIndex];
-                if (IsValidOccluder(renderer) && renderer.bounds.max.y >= minimumWorldHeight)
-                {
-                    currentOccluders.Add(renderer);
-                }
-            }
-        }
-    }
-
-    private static void AddUniqueRenderer(List<Renderer> renderers, Renderer renderer)
-    {
-        if (renderer != null && !renderers.Contains(renderer))
-        {
-            renderers.Add(renderer);
         }
     }
 
@@ -450,7 +396,6 @@ public class OvercookedStyleCamera : MonoBehaviour
 
         fadeStates.Clear();
         currentOccluders.Clear();
-        occluderRendererCache.Clear();
     }
 
     private void OnValidate()

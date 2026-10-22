@@ -306,6 +306,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private RectTransform sizeMoldTarget;
     private RectTransform sizeScaleIndicator;
     private Button sizeScaleSelectButton;
+    private Text sizeScaleSelectLabel;
     private float sizeScalePosition;
     private float sizeScaleDirection = 1f;
     private bool sizeScaleRunning;
@@ -1423,6 +1424,26 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         ActivateTab(SizeTabIndex, true);
     }
 
+    // A random first cake that is never the ordered flavor, so the player always has to look for it.
+    private int GetCarouselStartIndex(string orderedFlavor)
+    {
+        if (cakeFlavors == null || cakeFlavors.Length == 0)
+        {
+            return 0;
+        }
+
+        List<int> candidates = new List<int>();
+        for (int i = 0; i < cakeFlavors.Length; i++)
+        {
+            if (cakeFlavors[i] == null || !string.Equals(cakeFlavors[i].flavorName, orderedFlavor, StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.Add(i);
+            }
+        }
+
+        return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : 0;
+    }
+
     private CakeFlavorEntry GetCarouselFlavor(RuntimeOrder order)
     {
         if (order == null || cakeFlavors == null || cakeFlavors.Length == 0)
@@ -1648,8 +1669,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         indicatorImage.raycastTarget = false;
         sizeScaleSelectButton = CreateButton("ScaleSelectButton", sizeGameRoot, new Color(0.97f, 0.96f, 0.93f, 1f));
         SetRect(sizeScaleSelectButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(230f, 58f), new Vector2(0.5f, 0.5f));
-        Text labelText = CreateText("Label", sizeScaleSelectButton.transform, "Seleccionar", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(labelText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        sizeScaleSelectLabel = CreateText("Label", sizeScaleSelectButton.transform, "Seleccionar", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(sizeScaleSelectLabel.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
         sizeScaleSelectButton.onClick.AddListener(SelectScalePosition);
         ButtonSfx.Attach(sizeScaleSelectButton, SfxId.KitchenUiClick);
         sizeScaleRunning = true;
@@ -1783,8 +1804,33 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
+        // After a miss the same button restarts the indicator.
+        if (!sizeScaleRunning)
+        {
+            SetSizeScaleRunning(true);
+            RefreshSizeTab();
+            return;
+        }
+
         int selectedIndex = Mathf.Clamp(Mathf.FloorToInt(sizeScalePosition * 3f), 0, 2);
+        if (CakeSizeValues[selectedIndex] != activePrepOrder.RequiredCakeSize)
+        {
+            // The indicator stays where it was stopped so the player sees the miss, like the oven.
+            SetSizeScaleRunning(false);
+            RefreshSizeTab();
+            return;
+        }
+
         HandleCakeSizeSelected(CakeSizeValues[selectedIndex]);
+    }
+
+    private void SetSizeScaleRunning(bool running)
+    {
+        sizeScaleRunning = running;
+        if (sizeScaleSelectLabel != null)
+        {
+            sizeScaleSelectLabel.text = running ? "Seleccionar" : "Reintentar";
+        }
     }
 
     private void BuildPlacementTab(RectTransform panel)
@@ -2097,8 +2143,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
                 UnityEngine.Random.Range(-(PlacementPlayAreaSize.y * 0.5f - holeHalfSize - 10f), PlacementPlayAreaSize.y * 0.5f - holeHalfSize - 10f)),
             TargetRotationDegrees = UnityEngine.Random.Range(0, 24) * PlacementRotationStep,
             TargetScale = targetScale,
-            // Random first cake so the carousel doesn't always open on the same flavor.
-            FlavorCarouselIndex = UnityEngine.Random.Range(0, cakeFlavors != null && cakeFlavors.Length > 0 ? cakeFlavors.Length : 1)
+            FlavorCarouselIndex = GetCarouselStartIndex(definition != null ? definition.cakeFlavor : null)
         };
     }
 
@@ -2659,6 +2704,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             }
         }
 
+        sizeFeedbackText.color = Color.black;
         if (activePrepOrder == null)
         {
             sizeFeedbackText.text = "Bloqueado hasta seleccionar una orden.";
@@ -2696,9 +2742,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             sizeFeedbackText.text = sizeSortValidated ? "Orden correcto. Selecciona el tamano solicitado." : "Ordena los pasteles de menor a mayor.";
         }
-        else
+        else if (sizeScaleRunning)
         {
             sizeFeedbackText.text = "Deten el indicador en la zona del tamano solicitado.";
+        }
+        else
+        {
+            sizeFeedbackText.text = "Ese no es el tamano solicitado. Presiona Reintentar.";
+            sizeFeedbackText.color = new Color(0.62f, 0.14f, 0.10f, 1f);
         }
     }
 
@@ -3947,10 +3998,14 @@ public sealed class SizeGamePieceView : MonoBehaviour, IBeginDragHandler, IDragH
     private Vector2 pointerOffset;
     private Canvas rootCanvas;
     private bool pressHeld;
-    private bool startedPressOnPiece;
     private bool isDragging;
     private Vector2 pressStartScreenPosition;
     private const float DragThresholdPixels = 8f;
+
+    // Every piece polls the mouse itself, so overlapping cakes would all grab the same press and stick together.
+    // Only one piece owns a press: the one drawn on top among those under the cursor.
+    private static SizeGamePieceView pressOwner;
+    private static int pressOwnerFrame = -1;
 
     public void Initialize(int sizeIndex, RectTransform root, Canvas targetCanvas)
     {
@@ -3974,11 +4029,19 @@ public sealed class SizeGamePieceView : MonoBehaviour, IBeginDragHandler, IDragH
         if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
         {
             pressHeld = true;
-            startedPressOnPiece = hovered;
             pressStartScreenPosition = screenPosition;
+            if (hovered && CanTakePressFrom(pressOwner))
+            {
+                pressOwner = this;
+                pressOwnerFrame = Time.frameCount;
+                // Keep the grab point under the cursor instead of snapping the piece's center to it.
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(dragRoot, screenPosition, GetEventCamera(), out Vector2 localPoint);
+                pointerOffset = rectTransform.anchoredPosition - localPoint;
+            }
         }
 
-        if (pressHeld && startedPressOnPiece && !isDragging && Vector2.Distance(pressStartScreenPosition, screenPosition) >= DragThresholdPixels)
+        bool ownsPress = pressOwner == this;
+        if (pressHeld && ownsPress && !isDragging && Vector2.Distance(pressStartScreenPosition, screenPosition) >= DragThresholdPixels)
         {
             isDragging = true;
             transform.SetAsLastSibling();
@@ -3991,9 +4054,13 @@ public sealed class SizeGamePieceView : MonoBehaviour, IBeginDragHandler, IDragH
 
         if (UnityEngine.InputSystem.Mouse.current.leftButton.wasReleasedThisFrame)
         {
-            bool clicked = pressHeld && startedPressOnPiece && !isDragging;
+            bool clicked = pressHeld && ownsPress && !isDragging;
             pressHeld = false;
-            startedPressOnPiece = false;
+            if (ownsPress)
+            {
+                pressOwner = null;
+            }
+
             if (isDragging)
             {
                 DragEnded?.Invoke(this);
@@ -4005,6 +4072,23 @@ public sealed class SizeGamePieceView : MonoBehaviour, IBeginDragHandler, IDragH
             }
         }
 #endif
+    }
+
+    // A press from an earlier frame is stale (its owner was destroyed before release); in the same frame the topmost piece wins.
+    private bool CanTakePressFrom(SizeGamePieceView currentOwner)
+    {
+        return currentOwner == null
+            || pressOwnerFrame != Time.frameCount
+            || currentOwner.transform.parent != transform.parent
+            || currentOwner.transform.GetSiblingIndex() < transform.GetSiblingIndex();
+    }
+
+    private void OnDestroy()
+    {
+        if (pressOwner == this)
+        {
+            pressOwner = null;
+        }
     }
 
     public void OnBeginDrag(PointerEventData eventData)

@@ -51,6 +51,8 @@ public class PrisonOrderManager : MonoBehaviour
 
     private readonly List<KitchenOrderPrepUIController.OrderDefinition> availableOrders = new List<KitchenOrderPrepUIController.OrderDefinition>();
     private readonly List<PrisonerInteractable> prisoners = new List<PrisonerInteractable>();
+    private readonly List<Sprite> prisonerSpriteDeck = new List<Sprite>();
+    private Sprite lastPrisonerSprite;
     private float remainingDaySeconds;
     private int earnedMoney;
     private int deliveredOrders;
@@ -452,6 +454,8 @@ public class PrisonOrderManager : MonoBehaviour
         }
 
         prisoners.Clear();
+        prisonerSpriteDeck.Clear();
+        lastPrisonerSprite = null;
         for (int i = 0; i < jailCellsRoot.childCount; i++)
         {
             Transform cellPoint = jailCellsRoot.GetChild(i);
@@ -474,7 +478,7 @@ public class PrisonOrderManager : MonoBehaviour
             prisonerObject.transform.localRotation = Quaternion.identity;
 
             var spriteRenderer = prisonerObject.GetComponent<SpriteRenderer>();
-            spriteRenderer.sprite = prisionerSprites[Random.Range(0, prisionerSprites.Count)];
+            spriteRenderer.sprite = TakePrisonerSprite();
 
             BoxCollider collider = prisonerObject.AddComponent<BoxCollider>();
             collider.isTrigger = true;
@@ -490,6 +494,39 @@ public class PrisonOrderManager : MonoBehaviour
             prisoner.Initialize(this, cellPoint.name, GetCellLabel(cellPoint.name));
             prisoners.Add(prisoner);
         }
+    }
+
+    // Deals the sprites like a shuffled deck so each one is used evenly and consecutive cells never share a prisoner.
+    private Sprite TakePrisonerSprite()
+    {
+        if (prisionerSprites.Count == 0)
+        {
+            return null;
+        }
+
+        if (prisonerSpriteDeck.Count == 0)
+        {
+            prisonerSpriteDeck.AddRange(prisionerSprites);
+            for (int i = prisonerSpriteDeck.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                Sprite swap = prisonerSpriteDeck[i];
+                prisonerSpriteDeck[i] = prisonerSpriteDeck[j];
+                prisonerSpriteDeck[j] = swap;
+            }
+
+            // Cards are drawn from the end; a new deck must not start with the sprite the previous one ended on.
+            int top = prisonerSpriteDeck.Count - 1;
+            if (top > 0 && prisonerSpriteDeck[top] == lastPrisonerSprite)
+            {
+                prisonerSpriteDeck[top] = prisonerSpriteDeck[0];
+                prisonerSpriteDeck[0] = lastPrisonerSprite;
+            }
+        }
+
+        lastPrisonerSprite = prisonerSpriteDeck[prisonerSpriteDeck.Count - 1];
+        prisonerSpriteDeck.RemoveAt(prisonerSpriteDeck.Count - 1);
+        return lastPrisonerSprite;
     }
 
     private static KitchenOrderPrepUIController.OrderDefinition CloneOrderForPrisoner(KitchenOrderPrepUIController.OrderDefinition source, PrisonerInteractable prisoner)
