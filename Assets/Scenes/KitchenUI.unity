@@ -4139,6 +4139,11 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: b2db28a3f53116847b30237174db34cf, type: 3}
   toppingSlotSprite: {fileID: 21300000, guid: 5f7187aafb1ee5d40b946a77b22dbf5a, type: 3}
   toppingSelectedSlotSprite: {fileID: 21300000, guid: 44d00688808f6524a972b4df5878a9c6, type: 3}
+  preparationContainerSprite: {fileID: 21300000, guid: 9078e03ca87892542af11f9af99b48b7, type: 3}
+  cakeSizeSprites:
+  - {fileID: -1321192982, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+  - {fileID: 1663483032, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
+  - {fileID: 290995605, guid: a30b3d546d18ccc459dff9f8c64c1090, type: 3}
   inventoryHud: {fileID: 1495665895}
   wrongSizePenalty: 0.2
   badPlacementPenalty: 0.2

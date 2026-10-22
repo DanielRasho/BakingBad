@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 [DisallowMultipleComponent]
 public class KitchenOrderPrepUIController : MonoBehaviour
@@ -52,6 +53,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         Large
     }
 
+    private enum SizeGameType
+    {
+        CorrectMold,
+        SortCakes,
+        FillScale
+    }
+
     private enum PlacementHoleShape
     {
         Circle,
@@ -93,6 +101,9 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public float TargetScale;
         public float PieceScale = 1f;
         public CakeSizeOption SelectedCakeSize = CakeSizeOption.None;
+        public SizeGameType SizeGame;
+        public bool SizeGameAssigned;
+        public bool SizeGameCompleted;
         public bool SizeMatched;
         public bool PlacementCorrect;
         public bool PlacementCompleted;
@@ -150,6 +161,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private NamedIconEntry[] toppingCakeIcons;
     [SerializeField] private Sprite toppingSlotSprite;
     [SerializeField] private Sprite toppingSelectedSlotSprite;
+    [Tooltip("Container shown as the drop target in the mold minigame.")]
+    [SerializeField] private Sprite preparationContainerSprite;
+    [Tooltip("Cake sprites for Small, Medium and Large, in that order.")]
+    [SerializeField] private Sprite[] cakeSizeSprites;
     [SerializeField] private CakeInventoryHud inventoryHud;
 
     [Header("Payout Penalties (fraction of base payout)")]
@@ -245,6 +260,18 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Button[] sizeOptionButtons;
     private Image[] sizeOptionBackgrounds;
     private Text sizeFeedbackText;
+    private RectTransform sizeGameContent;
+    private RectTransform sizeGameRoot;
+    private RectTransform sizeSortArea;
+    private RectTransform sizeMoldTarget;
+    private RectTransform sizeScaleIndicator;
+    private Button sizeScaleSelectButton;
+    private float sizeScalePosition;
+    private float sizeScaleDirection = 1f;
+    private bool sizeScaleRunning;
+    private readonly List<SizeGamePieceView> sizeGamePieces = new List<SizeGamePieceView>();
+    private bool sizeSortValidated;
+    private RuntimeOrder sizeGameBuiltFor;
     private static Sprite cakeSizeCylinderSprite;
 
     private RectTransform placementPlayArea;
@@ -339,6 +366,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         UpdateBakeState();
+        UpdateSizeScaleGame();
     }
 
     private void OnDisable()
@@ -1269,41 +1297,271 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         ClearChildren(panel);
-        Text title = CreateText("Instruction", panel, "Selecciona el tamano exacto del pastel.", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(520f, 44f), new Vector2(0.5f, 0.5f));
+        sizeOptionButtons = new Button[0];
+        sizeOptionBackgrounds = new Image[0];
+        sizeGameContent = panel;
+        sizeFeedbackText = CreateText("SizeFeedbackText", panel, "Selecciona el tamano exacto del pastel.", 22, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(sizeFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(700f, 34f), new Vector2(0.5f, 0.5f));
+    }
 
-        sizeOptionButtons = new Button[3];
-        sizeOptionBackgrounds = new Image[3];
-        float[] xPositions = { -220f, 0f, 220f };
-        float[] cylinderWidths = { 60f, 88f, 120f };
-        Sprite cylinderSprite = GetCakeSizeCylinderSprite();
+    private void EnsureSizeGameAssigned(RuntimeOrder order)
+    {
+        if (order == null || order.SizeGameAssigned)
+        {
+            return;
+        }
+
+        order.SizeGame = (SizeGameType)UnityEngine.Random.Range(0, 3);
+        order.SizeGameAssigned = true;
+        order.SizeGameCompleted = false;
+    }
+
+    private void BuildSizeGame(RuntimeOrder order)
+    {
+        if (sizeGameContent == null || order == null)
+        {
+            return;
+        }
+
+        if (sizeGameBuiltFor == order && sizeGameRoot != null && sizeGameRoot.childCount > 0)
+        {
+            return;
+        }
+
+        EnsureSizeGameAssigned(order);
+        if (sizeGameRoot == null)
+        {
+            sizeGameRoot = CreateRect("SizeGameRoot", sizeGameContent);
+            SetRect(sizeGameRoot, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-40f, -110f), new Vector2(0.5f, 0.5f));
+        }
+
+        ClearChildren(sizeGameRoot);
+        sizeGamePieces.Clear();
+        sizeSortArea = null;
+        sizeMoldTarget = null;
+        sizeScaleIndicator = null;
+        sizeScaleSelectButton = null;
+        sizeScaleRunning = false;
+        sizeSortValidated = false;
+        sizeGameBuiltFor = order;
+
+        switch (order.SizeGame)
+        {
+            case SizeGameType.CorrectMold:
+                BuildCorrectMoldGame(order);
+                break;
+            case SizeGameType.SortCakes:
+                BuildSortCakesGame(order);
+                break;
+            case SizeGameType.FillScale:
+                BuildFillScaleGame(order);
+                break;
+        }
+    }
+
+    private void BuildCorrectMoldGame(RuntimeOrder order)
+    {
+        Text title = CreateText("MoldInstruction", sizeGameRoot, "Arrastra el molde del tamano solicitado.", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(720f, 44f), new Vector2(0.5f, 0.5f));
+        CreateSizeDragPieces(sizeGameRoot, false, 80f);
+        RectTransform targetRoot = CreateRect("MoldTarget", sizeGameRoot);
+        SetRect(targetRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -130f), new Vector2(440f, 210f), new Vector2(0.5f, 0.5f));
+        sizeMoldTarget = targetRoot;
+        RectTransform targetVisual = CreateRect("ContainerVisual", targetRoot);
+        SetRect(targetVisual, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -78f), new Vector2(340f, 150f), new Vector2(0.5f, 0.5f));
+        Image targetImage = targetVisual.gameObject.AddComponent<Image>();
+        targetImage.sprite = preparationContainerSprite;
+        targetImage.color = Color.white;
+        targetImage.preserveAspect = true;
+        targetImage.raycastTarget = false;
+        Text targetLabel = CreateText("Label", targetRoot, "Zona de preparacion", 18, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(targetLabel.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(440f, 32f), new Vector2(0.5f, 0.5f));
+    }
+
+    private void BuildSortCakesGame(RuntimeOrder order)
+    {
+        Text title = CreateText("SortInstruction", sizeGameRoot, "Ordena los pasteles de menor a mayor y selecciona el solicitado.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(820f, 44f), new Vector2(0.5f, 0.5f));
+        sizeSortArea = CreateRect("SortArea", sizeGameRoot);
+        SetRect(sizeSortArea, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -12f), new Vector2(760f, 190f), new Vector2(0.5f, 0.5f));
+        Image areaImage = sizeSortArea.gameObject.AddComponent<Image>();
+        areaImage.color = new Color(0.96f, 0.92f, 0.84f, 1f);
+        areaImage.raycastTarget = false;
+        int[] shuffled = { 2, 0, 1 };
+        for (int i = 0; i < shuffled.Length; i++)
+        {
+            CreateSizePiece(sizeSortArea, shuffled[i], new Vector2(-250f + i * 250f, 0f));
+        }
+    }
+
+    private void BuildFillScaleGame(RuntimeOrder order)
+    {
+        Text title = CreateText("ScaleInstruction", sizeGameRoot, "Deten la medida en el tamano solicitado.", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(720f, 44f), new Vector2(0.5f, 0.5f));
+        RectTransform bar = CreateRect("ScaleBar", sizeGameRoot);
+        SetRect(bar, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(720f, 70f), new Vector2(0.5f, 0.5f));
+        Image barImage = bar.gameObject.AddComponent<Image>();
+        barImage.color = new Color(0.82f, 0.80f, 0.75f, 1f);
+        barImage.raycastTarget = false;
+        Sprite cylinderSprite = GetSizeSprite(1);
+        float[] cylinderWidths = { 100f, 145f, 190f };
         float cylinderAspect = cylinderSprite.rect.height / cylinderSprite.rect.width;
         for (int i = 0; i < 3; i++)
         {
-            Button button = CreateButton("SizeOption_" + CakeSizeLabels[i], panel, new Color(0.97f, 0.96f, 0.93f, 1f));
-            RectTransform buttonRect = button.GetComponent<RectTransform>();
-            SetRect(buttonRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(xPositions[i], -10f), new Vector2(180f, 220f), new Vector2(0.5f, 0.5f));
+            RectTransform mold = CreateRect("ScaleMold_" + i, bar);
+            SetRect(mold, new Vector2((i + 0.5f) / 3f, 0.5f), new Vector2((i + 0.5f) / 3f, 0.5f), new Vector2(0f, 0f), new Vector2(cylinderWidths[i], cylinderWidths[i] * cylinderAspect), new Vector2(0.5f, 0.5f));
+            Image moldImage = mold.gameObject.AddComponent<Image>();
+            moldImage.sprite = GetSizeSprite(i);
+            moldImage.color = Color.white;
+            moldImage.preserveAspect = true;
+            moldImage.raycastTarget = false;
+            Text label = CreateText("ScaleLabel_" + i, bar, CakeSizeLabels[i], 20, FontStyle.Bold, TextAnchor.MiddleCenter);
+            SetRect(label.rectTransform, new Vector2((i + 0.5f) / 3f, 0f), new Vector2((i + 0.5f) / 3f, 0f), new Vector2(0f, -46f), new Vector2(190f, 28f), new Vector2(0.5f, 0.5f));
+        }
+        sizeScaleIndicator = CreateRect("ScaleIndicator", bar);
+        SetRect(sizeScaleIndicator, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(8f, 92f), new Vector2(0.5f, 0.5f));
+        Image indicatorImage = sizeScaleIndicator.gameObject.AddComponent<Image>();
+        indicatorImage.color = new Color(0.55f, 0.18f, 0.12f, 1f);
+        indicatorImage.raycastTarget = false;
+        sizeScaleSelectButton = CreateButton("ScaleSelectButton", sizeGameRoot, new Color(0.97f, 0.96f, 0.93f, 1f));
+        SetRect(sizeScaleSelectButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(230f, 58f), new Vector2(0.5f, 0.5f));
+        Text labelText = CreateText("Label", sizeScaleSelectButton.transform, "Seleccionar", 22, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(labelText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        sizeScaleSelectButton.onClick.AddListener(SelectScalePosition);
+        ButtonSfx.Attach(sizeScaleSelectButton, SfxId.KitchenUiClick);
+        sizeScaleRunning = true;
+    }
 
-            // Cylinders share a baseline so the three sizes read as a comparison.
-            Image cylinder = CreateImage("CakeSizeCylinder", buttonRect, Color.white);
-            cylinder.sprite = cylinderSprite;
-            cylinder.preserveAspect = true;
-            cylinder.raycastTarget = false;
-            SetRect(cylinder.rectTransform, new Vector2(0.5f, 0.45f), new Vector2(0.5f, 0.45f), Vector2.zero, new Vector2(cylinderWidths[i], cylinderWidths[i] * cylinderAspect), new Vector2(0.5f, 0f));
+    private void CreateSizeDragPieces(RectTransform parent, bool shuffled, float verticalOffset = 0f)
+    {
+        int[] indexes = shuffled ? new[] { 2, 0, 1 } : new[] { 0, 1, 2 };
+        for (int i = 0; i < indexes.Length; i++)
+        {
+            CreateSizePiece(parent, indexes[i], new Vector2(-250f + i * 250f, verticalOffset));
+        }
+    }
 
-            Text label = CreateText("SizeLabel", buttonRect, CakeSizeLabels[i], 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-            SetRect(label.rectTransform, new Vector2(0.5f, 0.3f), new Vector2(0.5f, 0.3f), Vector2.zero, new Vector2(150f, 50f), new Vector2(0.5f, 0.5f));
+    private SizeGamePieceView CreateSizePiece(RectTransform parent, int sizeIndex, Vector2 position)
+    {
+        GameObject pieceObject = new GameObject("SizePiece_" + CakeSizeLabels[sizeIndex], typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(SizeGamePieceView));
+        RectTransform pieceRect = pieceObject.GetComponent<RectTransform>();
+        pieceRect.SetParent(parent, false);
+        float[] cylinderWidths = { 100f, 145f, 190f };
+        float width = cylinderWidths[Mathf.Clamp(sizeIndex, 0, cylinderWidths.Length - 1)];
+        Sprite cylinderSprite = GetSizeSprite(sizeIndex);
+        float cylinderAspect = cylinderSprite.rect.height / cylinderSprite.rect.width;
+        SetRect(pieceRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, new Vector2(width, width * cylinderAspect), new Vector2(0.5f, 0.5f));
+        Image image = pieceObject.GetComponent<Image>();
+        image.color = new Color(1f, 1f, 1f, 1f);
+        image.sprite = cylinderSprite;
+        image.preserveAspect = true;
+        image.raycastTarget = true;
+        Outline outline = pieceObject.AddComponent<Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2f, -2f);
+        Text label = CreateText("Label", pieceObject.transform, CakeSizeLabels[sizeIndex], 20, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(label.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, -22f), new Vector2(Mathf.Max(150f, width + 30f), 30f), new Vector2(0.5f, 0.5f));
+        SizeGamePieceView piece = pieceObject.GetComponent<SizeGamePieceView>();
+        piece.Initialize(sizeIndex, parent, rootCanvas);
+        piece.Clicked += HandleSizePieceClicked;
+        piece.DragEnded += HandleSizePieceDragEnded;
+        sizeGamePieces.Add(piece);
+        return piece;
+    }
 
-            int capturedIndex = i;
-            button.onClick.AddListener(() => HandleCakeSizeSelected(CakeSizeValues[capturedIndex]));
-            ButtonSfx.Attach(button, SfxId.KitchenUiClick);
-
-            sizeOptionButtons[i] = button;
-            sizeOptionBackgrounds[i] = button.GetComponent<Image>();
+    private void HandleSizePieceClicked(SizeGamePieceView piece)
+    {
+        if (activePrepOrder == null || piece == null)
+        {
+            return;
         }
 
-        sizeFeedbackText = CreateText("SizeFeedbackText", panel, "Selecciona un tamano para continuar.", 20, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(sizeFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(560f, 28f), new Vector2(0.5f, 0.5f));
+        HandleCakeSizeSelected(CakeSizeValues[piece.SizeIndex]);
+    }
+
+    private void HandleSizePieceDragEnded(SizeGamePieceView piece)
+    {
+        if (activePrepOrder == null || piece == null)
+        {
+            return;
+        }
+
+        if (activePrepOrder.SizeGame == SizeGameType.CorrectMold)
+        {
+            RectTransform pieceRect = piece.GetComponent<RectTransform>();
+            if (sizeMoldTarget != null && Vector2.Distance(pieceRect.anchoredPosition, sizeMoldTarget.anchoredPosition) < 150f)
+            {
+                HandleCakeSizeSelected(CakeSizeValues[piece.SizeIndex]);
+            }
+        }
+        else if (activePrepOrder.SizeGame == SizeGameType.SortCakes)
+        {
+            ValidateSortGame();
+        }
+    }
+
+    private void ValidateSortGame()
+    {
+        if (sizeGamePieces.Count < 3)
+        {
+            return;
+        }
+
+        sizeSortValidated = true;
+        for (int i = 0; i < sizeGamePieces.Count; i++)
+        {
+            for (int j = i + 1; j < sizeGamePieces.Count; j++)
+            {
+                if (sizeGamePieces[i].SizeIndex > sizeGamePieces[j].SizeIndex && sizeGamePieces[i].GetComponent<RectTransform>().anchoredPosition.x < sizeGamePieces[j].GetComponent<RectTransform>().anchoredPosition.x)
+                {
+                    sizeSortValidated = false;
+                }
+                if (sizeGamePieces[i].SizeIndex < sizeGamePieces[j].SizeIndex && sizeGamePieces[i].GetComponent<RectTransform>().anchoredPosition.x > sizeGamePieces[j].GetComponent<RectTransform>().anchoredPosition.x)
+                {
+                    sizeSortValidated = false;
+                }
+            }
+        }
+
+        if (sizeFeedbackText != null)
+        {
+            sizeFeedbackText.text = sizeSortValidated ? "Orden correcto. Ahora selecciona el tamano solicitado." : "Ordena los pasteles de menor a mayor.";
+        }
+    }
+
+    private void UpdateSizeScaleGame()
+    {
+        if (!sizeScaleRunning || sizeScaleIndicator == null || activePrepOrder == null || activePrepOrder.SizeGame != SizeGameType.FillScale)
+        {
+            return;
+        }
+
+        sizeScalePosition += sizeScaleDirection * Time.unscaledDeltaTime * 0.65f;
+        if (sizeScalePosition >= 1f)
+        {
+            sizeScalePosition = 1f;
+            sizeScaleDirection = -1f;
+        }
+        else if (sizeScalePosition <= 0f)
+        {
+            sizeScalePosition = 0f;
+            sizeScaleDirection = 1f;
+        }
+
+        sizeScaleIndicator.anchorMin = new Vector2(sizeScalePosition, 0.5f);
+        sizeScaleIndicator.anchorMax = new Vector2(sizeScalePosition, 0.5f);
+        sizeScaleIndicator.anchoredPosition = Vector2.zero;
+    }
+
+    private void SelectScalePosition()
+    {
+        if (activePrepOrder == null || activePrepOrder.SizeGame != SizeGameType.FillScale)
+        {
+            return;
+        }
+
+        int selectedIndex = Mathf.Clamp(Mathf.FloorToInt(sizeScalePosition * 3f), 0, 2);
+        HandleCakeSizeSelected(CakeSizeValues[selectedIndex]);
     }
 
     private void BuildPlacementTab(RectTransform panel)
@@ -1724,16 +1982,39 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        if (IsSizeChosen(activePrepOrder))
+        if (activePrepOrder.SizeGameCompleted || IsSizeChosen(activePrepOrder))
         {
             return;
         }
 
-        // A wrong size is allowed; it only lowers the payout when the cake is finished.
+        bool correct = selectedSize == activePrepOrder.RequiredCakeSize;
+        if (activePrepOrder.SizeGame == SizeGameType.SortCakes && !sizeSortValidated)
+        {
+            ShowSizeGameFeedback("Ordena los pasteles de menor a mayor.");
+            return;
+        }
+
+        if (!correct)
+        {
+            ShowSizeGameFeedback("Este no es el tamano adecuado.");
+            return;
+        }
+
         activePrepOrder.SelectedCakeSize = selectedSize;
-        activePrepOrder.SizeMatched = selectedSize == activePrepOrder.RequiredCakeSize;
+        activePrepOrder.SizeMatched = true;
+        activePrepOrder.SizeGameCompleted = true;
+        sizeScaleRunning = false;
+        ShowSizeGameFeedback("Tamano correcto.");
         RefreshAllUi();
         ActivateTab(1, true);
+    }
+
+    private void ShowSizeGameFeedback(string message)
+    {
+        if (sizeFeedbackText != null)
+        {
+            sizeFeedbackText.text = message;
+        }
     }
 
     private static bool IsSizeChosen(RuntimeOrder order)
@@ -2115,7 +2396,20 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        sizeFeedbackText.text = "Revisa la receta: si eliges otro tamano, te pagaran menos.";
+        EnsureSizeGameAssigned(activePrepOrder);
+        BuildSizeGame(activePrepOrder);
+        if (activePrepOrder.SizeGame == SizeGameType.CorrectMold)
+        {
+            sizeFeedbackText.text = "Arrastra el molde correcto hacia la zona de preparacion.";
+        }
+        else if (activePrepOrder.SizeGame == SizeGameType.SortCakes)
+        {
+            sizeFeedbackText.text = sizeSortValidated ? "Orden correcto. Selecciona el tamano solicitado." : "Ordena los pasteles de menor a mayor.";
+        }
+        else
+        {
+            sizeFeedbackText.text = "Deten el indicador en la zona del tamano solicitado.";
+        }
     }
 
     private void RefreshPlacementUi()
@@ -3066,6 +3360,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         return cakeSizeCylinderSprite;
     }
 
+    private Sprite GetSizeSprite(int sizeIndex)
+    {
+        if (cakeSizeSprites != null && sizeIndex >= 0 && sizeIndex < cakeSizeSprites.Length && cakeSizeSprites[sizeIndex] != null)
+        {
+            return cakeSizeSprites[sizeIndex];
+        }
+
+        return GetCakeSizeCylinderSprite();
+    }
+
     private static Sprite GetPlacementHoleSprite(PlacementHoleShape shape)
     {
         Sprite sprite;
@@ -3362,6 +3666,138 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             }
         }
     }
+
+[DisallowMultipleComponent]
+public sealed class SizeGamePieceView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
+{
+    public Action<SizeGamePieceView> Clicked;
+    public Action<SizeGamePieceView> DragEnded;
+    public int SizeIndex { get; private set; }
+
+    private RectTransform rectTransform;
+    private RectTransform dragRoot;
+    private Vector2 pointerOffset;
+    private Canvas rootCanvas;
+    private bool pressHeld;
+    private bool startedPressOnPiece;
+    private bool isDragging;
+    private Vector2 pressStartScreenPosition;
+    private const float DragThresholdPixels = 8f;
+
+    public void Initialize(int sizeIndex, RectTransform root, Canvas targetCanvas)
+    {
+        SizeIndex = sizeIndex;
+        rectTransform = GetComponent<RectTransform>();
+        dragRoot = root;
+        rootCanvas = GetComponentInParent<Canvas>();
+    }
+
+    private void Update()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (rectTransform == null || dragRoot == null || UnityEngine.InputSystem.Mouse.current == null)
+        {
+            return;
+        }
+
+        Vector2 screenPosition = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+        bool hovered = RectTransformUtility.RectangleContainsScreenPoint(rectTransform, screenPosition, GetEventCamera());
+
+        if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            pressHeld = true;
+            startedPressOnPiece = hovered;
+            pressStartScreenPosition = screenPosition;
+        }
+
+        if (pressHeld && startedPressOnPiece && !isDragging && Vector2.Distance(pressStartScreenPosition, screenPosition) >= DragThresholdPixels)
+        {
+            isDragging = true;
+            transform.SetAsLastSibling();
+        }
+
+        if (isDragging)
+        {
+            MoveToScreenPosition(screenPosition);
+        }
+
+        if (UnityEngine.InputSystem.Mouse.current.leftButton.wasReleasedThisFrame)
+        {
+            bool clicked = pressHeld && startedPressOnPiece && !isDragging;
+            pressHeld = false;
+            startedPressOnPiece = false;
+            if (isDragging)
+            {
+                DragEnded?.Invoke(this);
+            }
+            isDragging = false;
+            if (clicked)
+            {
+                Clicked?.Invoke(this);
+            }
+        }
+#endif
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (rectTransform == null || dragRoot == null)
+        {
+            return;
+        }
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(dragRoot, eventData.position, eventData.pressEventCamera, out Vector2 localPoint);
+        pointerOffset = rectTransform.anchoredPosition - localPoint;
+        transform.SetAsLastSibling();
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (rectTransform == null || dragRoot == null)
+        {
+            return;
+        }
+
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(dragRoot, eventData.position, eventData.pressEventCamera, out Vector2 localPoint))
+        {
+            rectTransform.anchoredPosition = localPoint + pointerOffset;
+        }
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        DragEnded?.Invoke(this);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // Mouse input is handled explicitly above so it works with the project's Input System UI setup.
+    }
+
+    private void MoveToScreenPosition(Vector2 screenPosition)
+    {
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(dragRoot, screenPosition, GetEventCamera(), out Vector2 localPoint))
+        {
+            return;
+        }
+
+        Vector2 halfSize = rectTransform.rect.size * 0.5f;
+        Rect bounds = dragRoot.rect;
+        float x = Mathf.Clamp(localPoint.x + pointerOffset.x, bounds.xMin + halfSize.x, bounds.xMax - halfSize.x);
+        float y = Mathf.Clamp(localPoint.y + pointerOffset.y, bounds.yMin + halfSize.y, bounds.yMax - halfSize.y);
+        rectTransform.anchoredPosition = new Vector2(x, y);
+    }
+
+    private Camera GetEventCamera()
+    {
+        if (rootCanvas == null)
+        {
+            rootCanvas = GetComponentInParent<Canvas>();
+        }
+
+        return rootCanvas == null || rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : rootCanvas.worldCamera;
+    }
+}
 
     private static Transform FindDeepChild(Transform root, string targetName)
     {
