@@ -79,6 +79,8 @@ public class CopEnemy : MonoBehaviour
     private float alert;
     private float loseTimer;
     private float stunTimer;
+    private bool isLeaving;
+    private float leaveTimeout;
     private Vector3 lastKnownPlayerPos;
 
     /// <summary>Raised whenever the guard switches state. Passes the new state.</summary>
@@ -144,7 +146,93 @@ public class CopEnemy : MonoBehaviour
     private void Start()
     {
         ResolveReferences();
-        GoToNextWaypoint();
+
+        // GuardManager may already have assigned a route and a first destination.
+        if (waypointIndex < 0)
+        {
+            GoToNextWaypoint();
+        }
+    }
+
+    /// <summary>
+    /// Makes the guard stop patrolling, ignore the player, walk to the exit point and destroy itself there.
+    /// </summary>
+    public void LeaveAndDespawn(Vector3 exitPoint, float timeoutSeconds)
+    {
+        if (isLeaving)
+        {
+            return;
+        }
+
+        isLeaving = true;
+        leaveTimeout = timeoutSeconds;
+        alert = 0f;
+        SetState(GuardState.Patrol);
+
+        if (agent == null)
+        {
+            agent = GetComponent<NavMeshAgent>();
+        }
+
+        if (!agent.isOnNavMesh)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        agent.isStopped = false;
+        agent.speed = patrolSpeed;
+        agent.SetDestination(exitPoint);
+    }
+
+    private void UpdateLeaving()
+    {
+        leaveTimeout -= Time.deltaTime;
+        bool arrived = !agent.pathPending && agent.remainingDistance <= waypointReachDistance;
+
+        // The timeout covers an unreachable exit so a guard can never get stuck forever.
+        if (arrived || leaveTimeout <= 0f)
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    /// <summary>Applies difficulty values (used by GuardManager). Takes effect immediately, even mid-patrol.</summary>
+    public void ApplyDifficulty(CopDifficulty difficulty)
+    {
+        if (difficulty == null)
+        {
+            return;
+        }
+
+        patrolSpeed = difficulty.patrolSpeed;
+        chaseSpeed = difficulty.chaseSpeed;
+        detectionRadius = difficulty.detectionRadius;
+        sneakDetectionRadius = Mathf.Min(difficulty.sneakDetectionRadius, difficulty.detectionRadius);
+        timeToDetect = difficulty.timeToDetect;
+        moneyStolen = difficulty.moneyStolen;
+
+        if (agent == null)
+        {
+            agent = GetComponent<NavMeshAgent>();
+        }
+
+        agent.speed = state == GuardState.Chase ? chaseSpeed : patrolSpeed;
+    }
+
+    /// <summary>Sets the patrol route and starts walking it from a random point so guards do not move in sync.</summary>
+    public void SetWaypoints(Transform[] route, bool random)
+    {
+        waypoints = route;
+        randomWaypoints = random;
+        waitTimer = 0f;
+        waypointIndex = -1;
+
+        if (route != null && route.Length > 0)
+        {
+            waypointIndex = Random.Range(0, route.Length) - 1;
+            GoToNextWaypoint();
+        }
     }
 
     private void Update()
@@ -156,6 +244,12 @@ public class CopEnemy : MonoBehaviour
 
         if (!agent.isOnNavMesh)
         {
+            return;
+        }
+
+        if (isLeaving)
+        {
+            UpdateLeaving();
             return;
         }
 

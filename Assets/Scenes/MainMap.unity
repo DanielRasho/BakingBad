@@ -361,40 +361,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7008484985636294530, guid: d32beb9969ea4e14fb022f574a59aeed, type: 3}
   m_PrefabInstance: {fileID: 20921832}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &25468873
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 25468874}
-  m_Layer: 0
-  m_Name: Waypoints
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &25468874
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 25468873}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 13.51, y: 0, z: -7.51}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 217134606}
-  - {fileID: 1394596050}
-  - {fileID: 1521750770}
-  m_Father: {fileID: 1845235867}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &26119193
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1324,7 +1290,7 @@ GameObject:
   - component: {fileID: 60608302}
   - component: {fileID: 60608301}
   - component: {fileID: 60608300}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Concrete Kitchen Floor (5)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1679,6 +1645,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SM_Door_C1
       objectReference: {fileID: 0}
+    - target: {fileID: 1909257734726080, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 4840712883335746, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
       propertyPath: m_LocalPosition.x
       value: -14.664623
@@ -1697,15 +1667,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4840712883335746, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4840712883335746, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4840712883335746, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4840712883335746, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1722,7 +1692,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1909257734726080, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 103991482}
   m_SourcePrefab: {fileID: 100100000, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
 --- !u!4 &70955867 stripped
 Transform:
@@ -2487,6 +2460,30 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2559483447355550320, guid: dc8ead66d9ba3934f8d3bdc43525a02e, type: 3}
   m_PrefabInstance: {fileID: 103712443}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &103991477 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1909257734726080, guid: 97decf7fa05635b4b9ece7ce8f4a9b20, type: 3}
+  m_PrefabInstance: {fileID: 70955866}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &103991482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 103991477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa393963cb5517444bf8a03bf66465ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CopDoor
+  openAngle: 90
+  rotationSpeed: 180
+  hinge: {fileID: 0}
+  openRadius: 2
+  closeDelaySeconds: 1
+  openForPlayer: 0
+  scanInterval: 0.15
 --- !u!1001 &108431089
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3484,6 +3481,41 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 169752516}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &173066531
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 173066532}
+  m_Layer: 0
+  m_Name: Waypoints
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &173066532
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 173066531}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -10.7561035, y: 2.2738094, z: 3.1062613}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2098670270}
+  - {fileID: 1896021104}
+  - {fileID: 415292654}
+  - {fileID: 470158593}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &174576509
 GameObject:
   m_ObjectHideFlags: 0
@@ -3999,7 +4031,7 @@ GameObject:
   - component: {fileID: 191913845}
   - component: {fileID: 191913844}
   - component: {fileID: 191913843}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (8)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4347,37 +4379,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 199013876}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &217134605
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 217134606}
-  m_Layer: 0
-  m_Name: WayPoint1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &217134606
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 217134605}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -13.51, y: 0, z: -6.9}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 25468874}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &219328854
 GameObject:
   m_ObjectHideFlags: 0
@@ -5754,7 +5755,7 @@ GameObject:
   - component: {fileID: 297175036}
   - component: {fileID: 297175035}
   - component: {fileID: 297175034}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7554,6 +7555,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4676918937374004, guid: 55c6a14c26c60a249acd5a9c96a4833b, type: 3}
   m_PrefabInstance: {fileID: 412194713}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &415292653
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 415292654}
+  m_Layer: 0
+  m_Name: WayPoint3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &415292654
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 415292653}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -9.5, y: -2.41, z: -27.57}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 173066532}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &420625167
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7752,7 +7784,7 @@ GameObject:
   - component: {fileID: 424546035}
   - component: {fileID: 424546034}
   - component: {fileID: 424546033}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7924,7 +7956,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -10.890003
+      value: -10.903
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -8866,6 +8898,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6403398400573737236, guid: 1a4629ba2471df04b82c7bbeaf4788af, type: 3}
   m_PrefabInstance: {fileID: 466339872}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &470158592
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 470158593}
+  m_Layer: 0
+  m_Name: WayPoint4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &470158593
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 470158592}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.46, y: -2.41, z: -27.57}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 173066532}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &472207738
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9413,7 +9476,7 @@ GameObject:
   - component: {fileID: 508947590}
   - component: {fileID: 508947589}
   - component: {fileID: 508947588}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (4)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10019,7 +10082,7 @@ GameObject:
   - component: {fileID: 528014879}
   - component: {fileID: 528014878}
   - component: {fileID: 528014877}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10496,7 +10559,7 @@ GameObject:
   - component: {fileID: 546711151}
   - component: {fileID: 546711150}
   - component: {fileID: 546711149}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Concrete Kitchen Floor (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10918,7 +10981,7 @@ GameObject:
   - component: {fileID: 563829599}
   - component: {fileID: 563829598}
   - component: {fileID: 563829597}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -11249,6 +11312,37 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 578214137}
   m_Mesh: {fileID: 7414509850709746518, guid: 5327a0cff80406a49ba7f535d4bd212e, type: 3}
+--- !u!1 &579809429
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 579809430}
+  m_Layer: 0
+  m_Name: SpawnPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &579809430
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 579809429}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -21.47, y: 0.26, z: 8.24}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &579861609
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11486,6 +11580,10 @@ PrefabInstance:
     - target: {fileID: 6261905427159935780, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_Name
       value: SM_Wall_180 (75)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6261905427159935780, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -12525,7 +12623,7 @@ GameObject:
   - component: {fileID: 642290285}
   - component: {fileID: 642290284}
   - component: {fileID: 642290283}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (5)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -12828,7 +12926,7 @@ GameObject:
   - component: {fileID: 668685330}
   - component: {fileID: 668685329}
   - component: {fileID: 668685332}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Concrete Kitchen Floor (6)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -12947,7 +13045,7 @@ MonoBehaviour:
   m_Center: {x: 0, y: 2, z: 0}
   m_LayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 127
   m_UseGeometry: 0
   m_DefaultArea: 0
   m_GenerateLinks: 0
@@ -13881,6 +13979,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 725618928}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &733812453
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 733812454}
+  m_Layer: 0
+  m_Name: ---------- ENEMIES ----------------
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &733812454
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 733812453}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.46712, y: -0.005, z: 9.12604}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &738306936
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14342,7 +14471,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -10.756
+      value: -10.93
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -14998,6 +15127,10 @@ PrefabInstance:
     - target: {fileID: 1707409548827516, guid: c5457c1ad0e0bc3458e65b87e3494f89, type: 3}
       propertyPath: m_Name
       value: SM_Door_A1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1707409548827516, guid: c5457c1ad0e0bc3458e65b87e3494f89, type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4579489205561088, guid: c5457c1ad0e0bc3458e65b87e3494f89, type: 3}
       propertyPath: m_LocalPosition.x
@@ -15727,9 +15860,6 @@ MonoBehaviour:
   fadeNearbyTallObjects: 1
   nearbyFadeRadius: 1.15
   nearbyMinimumHeight: 0.65
-  occluderMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
 --- !u!114 &855947659
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15750,7 +15880,7 @@ MonoBehaviour:
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2
-    m_Bits: 55
+    m_Bits: 183
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
   m_RenderPostProcessing: 1
@@ -15813,7 +15943,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 23
+    m_Bits: 159
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -16015,7 +16145,7 @@ GameObject:
   - component: {fileID: 869103562}
   - component: {fileID: 869103561}
   - component: {fileID: 869103560}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Concrete Kitchen Floor (6)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -17467,7 +17597,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -11.0027075
+      value: -11.063
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -17830,7 +17960,7 @@ GameObject:
   - component: {fileID: 970688171}
   - component: {fileID: 970688170}
   - component: {fileID: 970688169}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (4)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -19396,7 +19526,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -10.97
+      value: -10.909
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -20801,6 +20931,85 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
+--- !u!1 &1114816357
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1114816359}
+  - component: {fileID: 1114816358}
+  m_Layer: 0
+  m_Name: GuardManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1114816358
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1114816357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b921200d390aa704590d8b62d2fa957b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GuardManager
+  guardPrefab: {fileID: 7521744727436532188, guid: 36864ebd9474b334cb172a29186ece25, type: 3}
+  spawnPoints:
+  - {fileID: 579809430}
+  patrolWaypoints:
+  - {fileID: 2098670270}
+  - {fileID: 1896021104}
+  - {fileID: 415292654}
+  - {fileID: 470158593}
+  randomWaypoints: 1
+  navMeshSnapDistance: 3
+  instantGuards: 1
+  spawnIntervalSeconds: 15
+  despawnTimeoutSeconds: 30
+  maxGuards: 5
+  guardCount: 0
+  difficulty:
+    patrolSpeed: 1.6
+    chaseSpeed: 3
+    detectionRadius: 6
+    sneakDetectionRadius: 2.5
+    timeToDetect: 1.2
+    moneyStolen: 40
+  useDayTiers: 1
+  dayTiers:
+  - fromDay: 1
+    guardCount: 2
+    spawnIntervalSeconds: 300
+    despawnTimeoutSeconds: 30
+    difficulty:
+      patrolSpeed: 1.4
+      chaseSpeed: 2.4
+      detectionRadius: 4
+      sneakDetectionRadius: 1.5
+      timeToDetect: 2
+      moneyStolen: 30
+--- !u!4 &1114816359
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1114816357}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -15.77, y: 1.79898, z: 21.3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1115369639
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21299,7 +21508,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -11.01
+      value: -11.12
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -21616,7 +21825,7 @@ GameObject:
   - component: {fileID: 1159810531}
   - component: {fileID: 1159810530}
   - component: {fileID: 1159810529}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Concrete Kitchen Floor (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -22266,7 +22475,7 @@ GameObject:
   - component: {fileID: 1196679796}
   - component: {fileID: 1196679795}
   - component: {fileID: 1196679794}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -22501,6 +22710,10 @@ PrefabInstance:
     - target: {fileID: 1707409548827516, guid: c5457c1ad0e0bc3458e65b87e3494f89, type: 3}
       propertyPath: m_Name
       value: SM_Door_A1 (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1707409548827516, guid: c5457c1ad0e0bc3458e65b87e3494f89, type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4579489205561088, guid: c5457c1ad0e0bc3458e65b87e3494f89, type: 3}
       propertyPath: m_LocalPosition.x
@@ -23446,7 +23659,7 @@ GameObject:
   - component: {fileID: 1276912951}
   - component: {fileID: 1276912950}
   - component: {fileID: 1276912949}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Concrete Kitchen Floor (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -24393,6 +24606,10 @@ PrefabInstance:
     - target: {fileID: 6261905427159935780, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_Name
       value: SM_Wall_180 (76)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6261905427159935780, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -26112,37 +26329,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4015317671171026, guid: ad4673fc1bfc61a4c816eb2c3c9db7ac, type: 3}
   m_PrefabInstance: {fileID: 1394444989}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1394596049
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1394596050}
-  m_Layer: 0
-  m_Name: WayPoint2
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1394596050
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1394596049}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 7.46, y: 0, z: 0.81}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 25468874}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1398137123 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1824697255915082914, guid: eae952f3d4f73a84196560fee6823c0b, type: 3}
@@ -26864,7 +27050,7 @@ GameObject:
   - component: {fileID: 1438379374}
   - component: {fileID: 1438379373}
   - component: {fileID: 1438379372}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -27031,37 +27217,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 2001497880}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1445568616
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1445568617}
-  m_Layer: 0
-  m_Name: ------- Enemy -----
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1445568617
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1445568616}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 7.68154, y: 2.85689, z: -0.33072}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1445850688
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -28418,7 +28573,7 @@ GameObject:
   - component: {fileID: 1509611032}
   - component: {fileID: 1509611031}
   - component: {fileID: 1509611030}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -28652,7 +28807,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -6.91
+      value: -6.79
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -28660,7 +28815,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 17.74
+      value: 17.73
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalRotation.w
@@ -28823,37 +28978,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 1519137202}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1521750769
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1521750770}
-  m_Layer: 0
-  m_Name: WayPoint3
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1521750770
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1521750769}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -19.65, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 25468874}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1524602484
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -30396,6 +30520,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 32350625f2bf0324c896c1e56130968d, type: 3}
       propertyPath: m_Name
       value: PatioFloor
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 32350625f2bf0324c896c1e56130968d, type: 3}
+      propertyPath: m_Layer
+      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -31943,6 +32071,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SM_DoorFrame_C_400
       objectReference: {fileID: 0}
+    - target: {fileID: 1824697255915082914, guid: eae952f3d4f73a84196560fee6823c0b, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 1824697255915243650, guid: eae952f3d4f73a84196560fee6823c0b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -13.57
@@ -32574,7 +32706,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 8506665409110587311, guid: 2d39342557b7ff74e97b482da89771f8, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -2.72
+      value: -3.24
       objectReference: {fileID: 0}
     - target: {fileID: 8506665409110587311, guid: 2d39342557b7ff74e97b482da89771f8, type: 3}
       propertyPath: m_LocalPosition.y
@@ -32582,7 +32714,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8506665409110587311, guid: 2d39342557b7ff74e97b482da89771f8, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 6.52
+      value: 4.31
       objectReference: {fileID: 0}
     - target: {fileID: 8506665409110587311, guid: 2d39342557b7ff74e97b482da89771f8, type: 3}
       propertyPath: m_LocalRotation.w
@@ -32896,7 +33028,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -10.776001
+      value: -10.89
       objectReference: {fileID: 0}
     - target: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -34096,39 +34228,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 1843907007}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1845235866
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1845235867}
-  m_Layer: 0
-  m_Name: Cops
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1845235867
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1845235866}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -15.3, y: 0, z: -0.41315}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2078094995}
-  - {fileID: 25468874}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1853178031
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -34674,6 +34773,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 1895350345}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1896021103
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1896021104}
+  m_Layer: 0
+  m_Name: WayPoint2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1896021104
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1896021103}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 15.25, y: 0, z: -11.42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 173066532}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1899347650
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -34808,7 +34938,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1901080506}
   - component: {fileID: 1901080507}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Minimap
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -34824,7 +34954,7 @@ Transform:
   m_GameObject: {fileID: 1901080505}
   serializedVersion: 2
   m_LocalRotation: {x: 0.3826835, y: -0, z: -0, w: 0.9238795}
-  m_LocalPosition: {x: 2.6999986, y: 6.7, z: 2.4752789}
+  m_LocalPosition: {x: 2.6999986, y: 6.8, z: 2.4752789}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -36695,7 +36825,7 @@ GameObject:
   - component: {fileID: 1985159624}
   - component: {fileID: 1985159623}
   - component: {fileID: 1985159622}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -38742,152 +38872,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8082482284066526707, guid: ca29c74284c40524f8edb533636550f9, type: 3}
   m_PrefabInstance: {fileID: 2058673877}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2059349181
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2059349182}
-  - component: {fileID: 2059349184}
-  - component: {fileID: 2059349183}
-  - component: {fileID: 2059349186}
-  - component: {fileID: 2059349185}
-  m_Layer: 0
-  m_Name: Sprite
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2059349182
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2059349181}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.3826835, y: -0, z: -0, w: 0.9238795}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2078094995}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2059349183
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2059349181}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 09e1b1b8d59d7d34ea5a50c502934db3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BillBoardSprite
-  targetCamera: {fileID: 855947661}
-  yAxisOnly: 0
---- !u!212 &2059349184
-SpriteRenderer:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2059349181}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 8347b16a02ac52946acc15001e3633af, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 0
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_Sprite: {fileID: -1748617904, guid: 3ac8f3569c3a52a4792aa8d5284c6039, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 0
-  m_FlipY: 0
-  m_DrawMode: 0
-  m_Size: {x: 6.3402047, y: 6.94}
-  m_AdaptiveModeThreshold: 0.5
-  m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
-  m_SpriteSortPoint: 0
-  m_BlendShapeWeights: []
---- !u!114 &2059349185
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2059349181}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8c9a3f4f6c463da45b496708453f3a4e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CopAnimation
-  guard: {fileID: 2078094997}
-  animator: {fileID: 2059349186}
-  directionReference: {fileID: 0}
---- !u!95 &2059349186
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2059349181}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 118125825d95f7e4aaa906a10bdb9989, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!1001 &2063726837
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -39148,7 +39132,7 @@ GameObject:
   - component: {fileID: 2077591889}
   - component: {fileID: 2077591888}
   - component: {fileID: 2077591887}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Concrete Kitchen Floor (5)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -39248,125 +39232,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2077591885}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &2078094994
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2078094995}
-  - component: {fileID: 2078094999}
-  - component: {fileID: 2078094998}
-  - component: {fileID: 2078094997}
-  m_Layer: 0
-  m_Name: Cop
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2078094995
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2078094994}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.12, y: 0.7, z: -6.16}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2059349182}
-  m_Father: {fileID: 1845235867}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2078094997
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2078094994}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3381695386aee724d90e09052d3b9d2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GuardEnemy
-  player: {fileID: 1282066329}
-  orderManager: {fileID: 1798709206}
-  waypoints:
-  - {fileID: 217134606}
-  - {fileID: 1394596050}
-  - {fileID: 1521750770}
-  patrolSpeed: 1.6
-  waypointWaitSeconds: 1.5
-  waypointReachDistance: 0.4
-  randomWaypoints: 1
-  detectionRadius: 4.5
-  sneakDetectionRadius: 2.3
-  timeToDetect: 1
-  sneakDetectTimeMultiplier: 2
-  alertDecaySeconds: 2
-  requireLineOfSight: 1
-  obstructionLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  eyeHeight: 1
-  onlyTargetCakeCarrier: 1
-  chaseSpeed: 2
-  catchDistance: 1
-  loseRadius: 9
-  loseSightSeconds: 3
-  moneyStolen: 40
-  stunSeconds: 3
-  showDetectionRange: 1
-  drawGizmos: 0
---- !u!195 &2078094998
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2078094994}
-  m_Enabled: 1
-  m_AgentTypeID: 0
-  m_Radius: 0.5
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 1
-  m_BaseOffset: 0.5
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
---- !u!65 &2078094999
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2078094994}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2080550304
 GameObject:
   m_ObjectHideFlags: 0
@@ -39656,6 +39521,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
   m_PrefabInstance: {fileID: 1239504464}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2098670269
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2098670270}
+  m_Layer: 0
+  m_Name: WayPoint1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2098670270
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2098670269}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -23.19, y: 0, z: -11.23}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 173066532}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2104486348
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -40306,6 +40202,7 @@ SceneRoots:
   - {fileID: 815010171}
   - {fileID: 1798709205}
   - {fileID: 1768767733}
+  - {fileID: 1114816359}
   - {fileID: 1106815248}
   - {fileID: 291708352}
   - {fileID: 115585475}
@@ -40318,5 +40215,6 @@ SceneRoots:
   - {fileID: 2145663887}
   - {fileID: 1626819361}
   - {fileID: 194623357}
-  - {fileID: 1445568617}
-  - {fileID: 1845235867}
+  - {fileID: 733812454}
+  - {fileID: 579809430}
+  - {fileID: 173066532}
