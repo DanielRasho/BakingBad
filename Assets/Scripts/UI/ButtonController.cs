@@ -109,6 +109,15 @@ public class InputSystemUIButtonProxy : MonoBehaviour, IPointerEnterHandler, IPo
         ApplyVisualState();
     }
 
+    public void SetStateColors(Color normal, Color hover, Color pressed)
+    {
+        normalColor = normal;
+        geometryHoverColor = hover;
+        eventHoverColor = hover;
+        pressedColor = pressed;
+        ApplyVisualState();
+    }
+
     private void ApplyVisualState()
     {
         if (targetGraphic == null)

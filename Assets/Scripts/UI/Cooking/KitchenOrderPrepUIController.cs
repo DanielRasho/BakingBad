@@ -41,6 +41,27 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     }
 
     [Serializable]
+    public class ToppingSauceEntry
+    {
+        [Tooltip("Must match the topping name in the orders JSON.")]
+        public string toppingName;
+        [Tooltip("Bottle shown as the button. Empty = a generic bottle tinted with the sauce color.")]
+        public Sprite bottleSprite;
+        [Tooltip("Color painted on the cake.")]
+        public Color sauceColor = Color.white;
+
+        public ToppingSauceEntry()
+        {
+        }
+
+        public ToppingSauceEntry(string name, Color color)
+        {
+            toppingName = name;
+            sauceColor = color;
+        }
+    }
+
+    [Serializable]
     private class OrderDefinitionCollection
     {
         public OrderDefinition[] orders;
@@ -133,6 +154,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public float PerfectBakeWindowEnd;
         public string SelectedTopping;
         public bool ToppingMatched;
+        public float ToppingCoverage;
         public bool CakeGenerated;
         public int FinalPayout;
         public string[] ToppingOptions;
@@ -176,6 +198,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField] private NamedIconEntry[] toppingCakeIcons;
     [SerializeField] private Sprite toppingSlotSprite;
     [SerializeField] private Sprite toppingSelectedSlotSprite;
+    [Tooltip("Sauce bottle and paint color for each topping name in the orders JSON.")]
+    [SerializeField] private ToppingSauceEntry[] toppingSauces =
+    {
+        new ToppingSauceEntry("Chocolate", new Color(0.45f, 0.25f, 0.15f, 1f)),
+        new ToppingSauceEntry("Fresa", new Color(0.86f, 0.20f, 0.30f, 1f)),
+        new ToppingSauceEntry("Caramelo", new Color(0.88f, 0.56f, 0.18f, 1f)),
+        new ToppingSauceEntry("Crema", new Color(0.99f, 0.96f, 0.84f, 1f)),
+        new ToppingSauceEntry("Glaseado", new Color(0.98f, 0.76f, 0.86f, 1f)),
+        new ToppingSauceEntry("Azucar glass", new Color(1f, 1f, 1f, 1f))
+    };
     [Tooltip("Container shown as the drop target in the mold minigame.")]
     [SerializeField] private Sprite preparationContainerSprite;
     [Tooltip("Cake sprites for Small, Medium and Large, in that order. Used until a flavor is chosen.")]
@@ -189,6 +221,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float wrongSizePenalty = 0.2f;
     [SerializeField, Range(0f, 1f)] private float badPlacementPenalty = 0.2f;
     [SerializeField, Range(0f, 1f)] private float wrongToppingPenalty = 0.2f;
+    [Tooltip("Taken in full at or below the minimum coverage, scaled down to nothing at the full-pay coverage.")]
+    [SerializeField, Range(0f, 1f)] private float lowCoveragePenalty = 0.2f;
+    [Tooltip("Cake coverage that earns the full payout.")]
+    [SerializeField, Range(0f, 1f)] private float fullPayCoverage = 0.9f;
+    [Tooltip("At or below this coverage the whole coverage penalty applies.")]
+    [SerializeField, Range(0f, 1f)] private float minimumCoverage = 0.5f;
 
     [Header("Placement Buttons")]
     [SerializeField] private Sprite placementIconButtonSprite;
@@ -237,7 +275,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private static readonly string[] CakeSizeLabels = { "Pequeno", "Mediano", "Grande" };
     private static readonly CakeSizeOption[] CakeSizeValues = { CakeSizeOption.Small, CakeSizeOption.Medium, CakeSizeOption.Large };
-    private static readonly string[] FallbackToppings = { "Crema", "Chocolate", "Mora", "Azucar glass", "Fresa", "Glaseado", "Caramelo" };
+    private static readonly string[] FallbackToppings = { "Crema", "Chocolate", "Azucar glass", "Fresa", "Glaseado", "Caramelo" };
 
     private readonly List<RuntimeOrder> allOrders = new List<RuntimeOrder>();
     private readonly List<RuntimeOrder> spawnedOrders = new List<RuntimeOrder>();
@@ -342,11 +380,17 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Button bakeOffButton;
     private Button bakeOnButton;
 
-    private Button[] toppingOptionButtons;
-    private Image[] toppingOptionBackgrounds;
-    private Text[] toppingOptionLabelTexts;
-    private Image[] toppingOptionCakeImages;
+    private Button[] toppingBottleButtons;
+    private Image[] toppingBottleImages;
+    private Text[] toppingBottleLabels;
+    private ToppingPaintSurface toppingPaintSurface;
+    private RuntimeOrder toppingPaintOrder;
+    private Text toppingCoverageText;
+    private Text toppingGoalText;
+    private Button toppingClearButton;
+    private Button toppingFinishButton;
     private Text toppingFeedbackText;
+    private static Sprite genericSauceBottleSprite;
 
     private const float OrderCardWidth = 136f;
     private const float OrderCardHeight = 176f;
@@ -2048,43 +2092,88 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         ClearChildren(panel);
-        Text title = CreateText("Instruction", panel, "Elige el topping correcto para terminar el pedido.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(640f, 40f), new Vector2(0.5f, 0.5f));
+        Text title = CreateText("Instruction", panel, "Elige la salsa del pedido y cubre el pastel: manten presionado y arrastra.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
-        toppingOptionButtons = new Button[3];
-        toppingOptionBackgrounds = new Image[3];
-        toppingOptionLabelTexts = new Text[3];
-        toppingOptionCakeImages = new Image[3];
-        float[] xPositions = { -240f, 0f, 240f };
+        // Same framed area as the placement minigame: bottles on the left, the cake to paint on the right.
+        RectTransform playArea = CreateRect("ToppingPlayArea", panel);
+        SetRect(playArea, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), Vector2.zero, PlacementPlayAreaSize, new Vector2(0.5f, 0.5f));
+        Image playAreaImage = playArea.gameObject.AddComponent<Image>();
+        playAreaImage.color = new Color(0.97f, 0.91f, 0.82f, 1f);
+        Outline playAreaOutline = playArea.gameObject.AddComponent<Outline>();
+        playAreaOutline.effectColor = new Color(0.55f, 0.30f, 0.22f, 1f);
+        playAreaOutline.effectDistance = new Vector2(2f, -2f);
 
+        toppingBottleButtons = new Button[3];
+        toppingBottleImages = new Image[3];
+        toppingBottleLabels = new Text[3];
+        float[] bottleX = { -330f, -220f, -110f };
         for (int i = 0; i < 3; i++)
         {
-            Button button = CreateButton("ToppingOption_" + i, panel, new Color(0.97f, 0.96f, 0.93f, 1f));
-            StylePlacementButton(button, toppingSlotSprite, true);
+            // The bottle PNG is the button itself: no background, no outline, and it only darkens on hover.
+            Button button = CreateButton("SauceBottle_" + i, playArea, Color.white);
+            button.transition = Selectable.Transition.None;
+            Outline outline = button.GetComponent<Outline>();
+            if (outline != null)
+            {
+                Destroy(outline);
+            }
+
+            if (button.GetComponent<CursorChange>() == null)
+            {
+                button.gameObject.AddComponent<CursorChange>();
+            }
+
             RectTransform buttonRect = button.GetComponent<RectTransform>();
-            SetRect(buttonRect, new Vector2(0.5f, 0.54f), new Vector2(0.5f, 0.54f), new Vector2(xPositions[i], -10f), new Vector2(200f, 216f), new Vector2(0.5f, 0.5f));
+            SetRect(buttonRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(bottleX[i], 20f), new Vector2(90f, 200f), new Vector2(0.5f, 0.5f));
 
-            Image cakeImage = CreateImage("CakeSlice", buttonRect, Color.white);
-            cakeImage.preserveAspect = true;
-            cakeImage.raycastTarget = false;
-            SetRect(cakeImage.rectTransform, new Vector2(0.5f, 0.62f), new Vector2(0.5f, 0.62f), Vector2.zero, new Vector2(130f, 120f), new Vector2(0.5f, 0.5f));
+            Image bottleImage = button.GetComponent<Image>();
+            bottleImage.preserveAspect = true;
 
-            Text label = CreateText("ToppingLabel", buttonRect, "--", 26, FontStyle.Normal, TextAnchor.MiddleCenter);
-            label.color = toppingSlotSprite != null ? Color.white : Color.black;
-            SetRect(label.rectTransform, new Vector2(0.5f, 0.2f), new Vector2(0.5f, 0.2f), Vector2.zero, new Vector2(170f, 44f), new Vector2(0.5f, 0.5f));
+            Text label = CreateText("SauceLabel_" + i, playArea, "--", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
+            SetRect(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(bottleX[i], -118f), new Vector2(108f, 28f), new Vector2(0.5f, 0.5f));
 
             int capturedIndex = i;
-            button.onClick.AddListener(() => HandleToppingSelected(capturedIndex));
+            button.onClick.AddListener(() => HandleToppingBottleSelected(capturedIndex));
             ButtonSfx.Attach(button, SfxId.KitchenUiClick);
-
-            toppingOptionButtons[i] = button;
-            toppingOptionBackgrounds[i] = button.GetComponent<Image>();
-            toppingOptionLabelTexts[i] = label;
-            toppingOptionCakeImages[i] = cakeImage;
+            toppingBottleButtons[i] = button;
+            toppingBottleImages[i] = bottleImage;
+            toppingBottleLabels[i] = label;
         }
 
-        toppingFeedbackText = CreateText("ToppingFeedbackText", panel, "Selecciona el topping correcto.", 20, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(toppingFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 42f), new Vector2(560f, 28f), new Vector2(0.5f, 0.5f));
+        GameObject surfaceObject = new GameObject("ToppingPaintSurface", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
+        RectTransform surfaceRect = surfaceObject.GetComponent<RectTransform>();
+        surfaceRect.SetParent(playArea, false);
+        SetRect(surfaceRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(190f, 22f), new Vector2(260f, 260f), new Vector2(0.5f, 0.5f));
+        toppingPaintSurface = surfaceObject.AddComponent<ToppingPaintSurface>();
+        toppingPaintSurface.Painted += HandleToppingPainted;
+
+        // Big live percentage under the cake, like the mockup; the goal sits at the bottom like "Precision".
+        toppingCoverageText = CreateText("ToppingCoverageText", playArea, "Cobertura: 0%", 30, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(toppingCoverageText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(190f, -138f), new Vector2(320f, 36f), new Vector2(0.5f, 0.5f));
+
+        const float controlsY = 106f;
+        toppingClearButton = CreateButton("ClearSauceButton", panel, Color.white);
+        StylePlacementButton(toppingClearButton, placementConfirmButtonSprite, true);
+        SetRect(toppingClearButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-180f, controlsY), new Vector2(240f, 84f), new Vector2(0.5f, 0.5f));
+        Text clearLabel = CreateText("Label", toppingClearButton.GetComponent<RectTransform>(), "Limpiar", 32, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(clearLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-40f, -20f), new Vector2(0.5f, 0.5f));
+        toppingClearButton.onClick.AddListener(ClearToppingPaint);
+        ButtonSfx.Attach(toppingClearButton, SfxId.KitchenUiClick);
+
+        toppingFinishButton = CreateButton("FinishCakeButton", panel, Color.white);
+        StylePlacementButton(toppingFinishButton, placementConfirmButtonSprite, true);
+        SetRect(toppingFinishButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(150f, controlsY), new Vector2(320f, 84f), new Vector2(0.5f, 0.5f));
+        Text finishLabel = CreateText("Label", toppingFinishButton.GetComponent<RectTransform>(), "Terminar pastel", 32, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(finishLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-40f, -20f), new Vector2(0.5f, 0.5f));
+        toppingFinishButton.onClick.AddListener(FinishToppingCake);
+        ButtonSfx.Attach(toppingFinishButton, SfxId.KitchenUiClick);
+
+        toppingFeedbackText = CreateText("ToppingFeedbackText", panel, "Elige la salsa que pidio el preso.", 19, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(toppingFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
+
+        toppingGoalText = CreateText("ToppingGoalText", panel, string.Empty, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(toppingGoalText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(600f, 22f), new Vector2(0.5f, 0.5f));
     }
 
     private void LoadOrdersFromJson()
@@ -2484,9 +2573,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         bakePerfectZoneRect.offsetMax = Vector2.zero;
     }
 
-    private void HandleToppingSelected(int optionIndex)
+    private bool IsToppingStepAvailable()
     {
-        if (activePrepOrder == null || activePrepOrder.BakeOutcome == BakeResult.None || activePrepOrder.ToppingOptions == null)
+        return activePrepOrder != null && activePrepOrder.State == OrderRuntimeState.ActivePrep
+            && activePrepOrder.BakeOutcome != BakeResult.None && !activePrepOrder.BakeInProgress;
+    }
+
+    private void HandleToppingBottleSelected(int optionIndex)
+    {
+        if (!IsToppingStepAvailable() || activePrepOrder.ToppingOptions == null)
         {
             return;
         }
@@ -2496,16 +2591,65 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             return;
         }
 
-        // A wrong topping is allowed; it only lowers the payout.
-        string selectedTopping = activePrepOrder.ToppingOptions[optionIndex];
-        activePrepOrder.SelectedTopping = selectedTopping;
-        activePrepOrder.ToppingMatched = string.Equals(selectedTopping, activePrepOrder.Data.topping, StringComparison.OrdinalIgnoreCase);
-        activePrepOrder.FinalPayout = CalculateFinalPayout(activePrepOrder);
+        string option = activePrepOrder.ToppingOptions[optionIndex];
+        if (string.Equals(option, activePrepOrder.SelectedTopping, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
 
+        // A wrong sauce is allowed; it only lowers the payout. Switching sauce wipes the cake so colors never mix.
+        bool hadPaint = toppingPaintSurface != null && toppingPaintSurface.HasPaint;
+        activePrepOrder.SelectedTopping = option;
+        activePrepOrder.ToppingMatched = string.Equals(option, activePrepOrder.Data.topping, StringComparison.OrdinalIgnoreCase);
+        activePrepOrder.ToppingCoverage = 0f;
+        if (toppingPaintSurface != null)
+        {
+            toppingPaintSurface.Clear();
+            toppingPaintSurface.SetBrushColor(GetSauceColor(option));
+        }
+
+        RefreshToppingUi();
+        if (hadPaint && toppingFeedbackText != null)
+        {
+            toppingFeedbackText.text = "Cambiaste de salsa: el pastel se limpio.";
+        }
+    }
+
+    private void HandleToppingPainted()
+    {
+        if (activePrepOrder == null || toppingPaintSurface == null)
+        {
+            return;
+        }
+
+        activePrepOrder.ToppingCoverage = toppingPaintSurface.Coverage;
+        RefreshToppingUi();
+    }
+
+    private void ClearToppingPaint()
+    {
+        if (!IsToppingStepAvailable() || toppingPaintSurface == null)
+        {
+            return;
+        }
+
+        toppingPaintSurface.Clear();
+        activePrepOrder.ToppingCoverage = 0f;
+        RefreshToppingUi();
+    }
+
+    private void FinishToppingCake()
+    {
+        if (!IsToppingStepAvailable() || string.IsNullOrEmpty(activePrepOrder.SelectedTopping) || toppingPaintSurface == null || !toppingPaintSurface.HasPaint)
+        {
+            return;
+        }
+
+        activePrepOrder.ToppingCoverage = toppingPaintSurface.Coverage;
+        activePrepOrder.FinalPayout = CalculateFinalPayout(activePrepOrder);
         if (!AddCakeToInventory(activePrepOrder))
         {
-            activePrepOrder.SelectedTopping = null;
-            RefreshToppingUi();
+            // The paint stays so the player can finish it as soon as a slot frees up.
             toppingFeedbackText.text = "Tu inventario esta lleno. Entrega un pastel antes de terminar este.";
             return;
         }
@@ -2513,10 +2657,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         RuntimeOrder finishedOrder = activePrepOrder;
         finishedOrder.CakeGenerated = true;
         finishedOrder.State = OrderRuntimeState.Completed;
-
         activePrepOrder = null;
         selectedOrder = null;
+        toppingPaintOrder = null;
         Close();
+
         // The cake now lives in the inventory with its cell, so the order card would only be clutter.
         RemoveOrder(finishedOrder.Data.id);
         int cakeMistakes = GetCakeMistakes(finishedOrder).Count;
@@ -2527,6 +2672,46 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         ShowInventoryMessage(GetFinishedCakeMessage(finishedOrder));
+    }
+
+    private ToppingSauceEntry FindSauce(string toppingName)
+    {
+        if (toppingSauces == null || string.IsNullOrEmpty(toppingName))
+        {
+            return null;
+        }
+
+        for (int i = 0; i < toppingSauces.Length; i++)
+        {
+            if (toppingSauces[i] != null && string.Equals(toppingSauces[i].toppingName, toppingName, StringComparison.OrdinalIgnoreCase))
+            {
+                return toppingSauces[i];
+            }
+        }
+
+        return null;
+    }
+
+    private Color GetSauceColor(string toppingName)
+    {
+        ToppingSauceEntry sauce = FindSauce(toppingName);
+        return sauce != null ? sauce.sauceColor : new Color(0.6f, 0.6f, 0.6f, 1f);
+    }
+
+    private bool IsCoverageEnough(RuntimeOrder order)
+    {
+        return order != null && order.ToppingCoverage >= fullPayCoverage;
+    }
+
+    // 0 = no coverage penalty, 1 = the whole coverage penalty.
+    private float GetCoveragePenaltyFactor(RuntimeOrder order)
+    {
+        if (order == null)
+        {
+            return 1f;
+        }
+
+        return 1f - Mathf.InverseLerp(minimumCoverage, fullPayCoverage, order.ToppingCoverage);
     }
 
     private void SetSelectedOrder(RuntimeOrder order, bool forceUnlockedTabs)
@@ -2863,59 +3048,172 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private void RefreshToppingUi()
     {
-        if (toppingOptionButtons == null || toppingFeedbackText == null)
+        if (toppingBottleButtons == null || toppingFeedbackText == null || toppingPaintSurface == null)
         {
             return;
         }
 
+        // The paint belongs to one order; another order (or none) starts from a clean cake.
+        if (toppingPaintOrder != activePrepOrder)
+        {
+            toppingPaintOrder = activePrepOrder;
+            toppingPaintSurface.Clear();
+            if (activePrepOrder != null)
+            {
+                activePrepOrder.ToppingCoverage = 0f;
+                if (!string.IsNullOrEmpty(activePrepOrder.SelectedTopping))
+                {
+                    toppingPaintSurface.SetBrushColor(GetSauceColor(activePrepOrder.SelectedTopping));
+                }
+            }
+        }
+
+        int goalPercent = Mathf.RoundToInt(fullPayCoverage * 100f);
+        toppingGoalText.text = "Meta: cubrir " + goalPercent + "% o mas del pastel para el pago completo";
+
         if (activePrepOrder == null)
         {
+            SetToppingControlsInteractable(false, false, false);
+            toppingCoverageText.text = "Cobertura: 0%";
+            toppingCoverageText.color = Color.black;
             toppingFeedbackText.text = "Bloqueado hasta terminar de hornear.";
-            SetToppingButtonsInteractable(false);
+            for (int i = 0; i < toppingBottleButtons.Length; i++)
+            {
+                toppingBottleLabels[i].text = "--";
+                toppingBottleImages[i].enabled = false;
+            }
+
             return;
         }
 
         EnsureToppingOptions(activePrepOrder);
-        bool toppingAvailable = activePrepOrder.BakeOutcome != BakeResult.None && !activePrepOrder.BakeInProgress;
-        SetToppingButtonsInteractable(toppingAvailable);
+        bool available = IsToppingStepAvailable();
+        bool hasSauce = !string.IsNullOrEmpty(activePrepOrder.SelectedTopping);
+        bool hasPaint = toppingPaintSurface.HasPaint;
 
-        for (int i = 0; i < toppingOptionButtons.Length; i++)
+        for (int i = 0; i < toppingBottleButtons.Length; i++)
         {
             string option = activePrepOrder.ToppingOptions != null && i < activePrepOrder.ToppingOptions.Length
                 ? activePrepOrder.ToppingOptions[i]
                 : null;
-
-            if (toppingOptionLabelTexts != null && i < toppingOptionLabelTexts.Length && toppingOptionLabelTexts[i] != null)
+            ToppingSauceEntry sauce = FindSauce(option);
+            Image bottleImage = toppingBottleImages[i];
+            bottleImage.enabled = option != null;
+            Color baseColor;
+            if (sauce != null && sauce.bottleSprite != null)
             {
-                toppingOptionLabelTexts[i].text = option ?? "--";
+                bottleImage.sprite = sauce.bottleSprite;
+                baseColor = Color.white;
+            }
+            else
+            {
+                bottleImage.sprite = GetGenericSauceBottleSprite();
+                baseColor = GetSauceColor(option);
             }
 
-            if (toppingOptionCakeImages != null && i < toppingOptionCakeImages.Length && toppingOptionCakeImages[i] != null)
-            {
-                Sprite cakeIcon = GetToppingCakeIcon(option);
-                toppingOptionCakeImages[i].sprite = cakeIcon;
-                toppingOptionCakeImages[i].enabled = cakeIcon != null;
-            }
+            toppingBottleLabels[i].text = option ?? "--";
 
-            if (toppingOptionBackgrounds != null && i < toppingOptionBackgrounds.Length && toppingOptionBackgrounds[i] != null)
-            {
-                bool isSelected = option != null && string.Equals(activePrepOrder.SelectedTopping, option, StringComparison.OrdinalIgnoreCase);
-                Sprite slotSprite = isSelected && toppingSelectedSlotSprite != null ? toppingSelectedSlotSprite : toppingSlotSprite;
-                if (slotSprite != null)
-                {
-                    toppingOptionBackgrounds[i].sprite = slotSprite;
-                    toppingOptionBackgrounds[i].color = Color.white;
-                }
-                else
-                {
-                    toppingOptionBackgrounds[i].color = isSelected ? tabActiveColor : tabIdleColor;
-                }
-            }
+            // The chosen bottle grows, like picking it up; the others fade a little.
+            bool isSelected = hasSauce && string.Equals(option, activePrepOrder.SelectedTopping, StringComparison.OrdinalIgnoreCase);
+            toppingBottleButtons[i].transform.localScale = Vector3.one * (isSelected ? 1.2f : 1f);
+            baseColor.a = hasSauce && !isSelected ? 0.6f : 1f;
+            toppingBottleLabels[i].fontStyle = isSelected ? FontStyle.Bold : FontStyle.Normal;
+            toppingBottleButtons[i].interactable = available;
+            SetBottleColors(toppingBottleButtons[i], baseColor);
         }
 
-        toppingFeedbackText.text = toppingAvailable
-            ? "Elige el topping pedido por el preso. El pastel ira a tu inventario."
-            : "Termina de hornear antes de agregar el topping.";
+        SetToppingControlsInteractable(available && hasSauce, available && hasPaint, available && hasSauce && hasPaint);
+
+        int coveragePercent = Mathf.FloorToInt(activePrepOrder.ToppingCoverage * 100f);
+        bool enough = IsCoverageEnough(activePrepOrder);
+        toppingCoverageText.text = "Cobertura: " + coveragePercent + "%";
+        toppingCoverageText.color = enough ? new Color(0.18f, 0.50f, 0.22f, 1f) : Color.black;
+
+        if (!available)
+        {
+            toppingFeedbackText.text = "Termina de hornear antes de agregar el topping.";
+        }
+        else if (!hasSauce)
+        {
+            toppingFeedbackText.text = "Elige la salsa que pidio el preso.";
+        }
+        else if (!hasPaint)
+        {
+            toppingFeedbackText.text = "Manten presionado el clic y arrastra sobre el pastel para echar la salsa.";
+        }
+        else if (enough)
+        {
+            toppingFeedbackText.text = "Pastel bien cubierto. Presiona Terminar pastel para llevarlo a tu inventario.";
+        }
+        else
+        {
+            toppingFeedbackText.text = "Aun se ve el pastel. Si lo terminas asi te pagaran menos.";
+        }
+    }
+
+    // The button proxy repaints the bottle on hover/press, so the darkening is set through it.
+    private static void SetBottleColors(Button button, Color baseColor)
+    {
+        Color hover = new Color(baseColor.r * 0.7f, baseColor.g * 0.7f, baseColor.b * 0.7f, baseColor.a);
+        Color pressed = new Color(baseColor.r * 0.55f, baseColor.g * 0.55f, baseColor.b * 0.55f, baseColor.a);
+        InputSystemUIButtonProxy proxy = button.GetComponent<InputSystemUIButtonProxy>();
+        if (proxy != null)
+        {
+            proxy.SetStateColors(baseColor, hover, pressed);
+        }
+        else
+        {
+            button.image.color = baseColor;
+        }
+    }
+
+    private void SetToppingControlsInteractable(bool canPaint, bool canClear, bool canFinish)
+    {
+        toppingPaintSurface.SetInteractable(canPaint);
+        toppingClearButton.interactable = canClear;
+        toppingFinishButton.interactable = canFinish;
+    }
+
+    // White bottle silhouette tinted with the sauce color, for toppings that have no bottle art yet.
+    private static Sprite GetGenericSauceBottleSprite()
+    {
+        if (genericSauceBottleSprite != null)
+        {
+            return genericSauceBottleSprite;
+        }
+
+        const int width = 64;
+        const int height = 150;
+        Color body = new Color(0.86f, 0.86f, 0.86f, 1f);
+        Color edge = new Color(0.35f, 0.35f, 0.35f, 1f);
+        Color label = Color.white;
+        genericSauceBottleSprite = ProceduralSprites.Create("GenericSauceBottle", width, height, new Vector2(0.5f, 0.5f), (x, y) =>
+        {
+            Vector2 p = new Vector2(x, y);
+            // Body: rounded rectangle; shoulders and nozzle: capsules narrowing to the top.
+            float bodyDistance = RoundedBoxDistance(p - new Vector2(32f, 56f), new Vector2(26f, 50f), 10f);
+            float shoulderDistance = ProceduralSprites.CapsuleDistance(p, new Vector2(32f, 104f), new Vector2(32f, 112f), 18f);
+            float nozzleDistance = ProceduralSprites.CapsuleDistance(p, new Vector2(32f, 112f), new Vector2(32f, 142f), 6f);
+            float distance = Mathf.Min(bodyDistance, Mathf.Min(shoulderDistance, nozzleDistance));
+            if (distance > 0f)
+            {
+                return Color.clear;
+            }
+
+            if (distance > -3f)
+            {
+                return edge;
+            }
+
+            return (p - new Vector2(32f, 58f)).magnitude <= 15f ? label : body;
+        });
+        return genericSauceBottleSprite;
+    }
+
+    private static float RoundedBoxDistance(Vector2 point, Vector2 halfSize, float radius)
+    {
+        Vector2 q = new Vector2(Mathf.Abs(point.x), Mathf.Abs(point.y)) - halfSize + new Vector2(radius, radius);
+        return new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0f) - radius;
     }
 
     private void ActivateTab(int tabIndex, bool force)
@@ -3193,6 +3491,15 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             options.Add(FallbackToppings[i]);
         }
 
+        // Shuffle so the ordered topping isn't always the first bottle.
+        for (int i = options.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            string swap = options[i];
+            options[i] = options[j];
+            options[j] = swap;
+        }
+
         order.ToppingOptions = options.ToArray();
     }
 
@@ -3208,21 +3515,23 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (!order.SizeMatched) penalty += wrongSizePenalty;
         if (!order.PlacementCorrect) penalty += badPlacementPenalty;
         if (!order.ToppingMatched) penalty += wrongToppingPenalty;
+        penalty += lowCoveragePenalty * GetCoveragePenaltyFactor(order);
 
         return Mathf.Max(0, Mathf.RoundToInt(order.BasePayoutValue * (1f - Mathf.Clamp01(penalty))));
     }
 
-    private static List<string> GetCakeMistakes(RuntimeOrder order)
+    private List<string> GetCakeMistakes(RuntimeOrder order)
     {
         List<string> mistakes = new List<string>();
         if (!order.FlavorMatched) mistakes.Add("sabor");
         if (!order.SizeMatched) mistakes.Add("tamano");
         if (!order.PlacementCorrect) mistakes.Add("objeto");
         if (!order.ToppingMatched) mistakes.Add("topping");
+        if (!IsCoverageEnough(order)) mistakes.Add("cobertura " + Mathf.FloorToInt(order.ToppingCoverage * 100f) + "%");
         return mistakes;
     }
 
-    private static string GetFinishedCakeMessage(RuntimeOrder order)
+    private string GetFinishedCakeMessage(RuntimeOrder order)
     {
         List<string> mistakes = GetCakeMistakes(order);
         string message = "Pastel para la celda #" + order.Data.cellNumber + " listo: Q" + order.FinalPayout;
@@ -3251,22 +3560,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (inventoryHud != null)
         {
             inventoryHud.ShowMessage(message);
-        }
-    }
-
-    private void SetToppingButtonsInteractable(bool interactable)
-    {
-        if (toppingOptionButtons == null)
-        {
-            return;
-        }
-
-        for (int i = 0; i < toppingOptionButtons.Length; i++)
-        {
-            if (toppingOptionButtons[i] != null)
-            {
-                toppingOptionButtons[i].interactable = interactable;
-            }
         }
     }
 
