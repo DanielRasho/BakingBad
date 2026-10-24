@@ -13,7 +13,7 @@ public class OvercookedStyleCamera : MonoBehaviour
     [SerializeField] private Transform target;
     [SerializeField] private CameraAngle angle = CameraAngle.Angle45;
 
-    [Header("Player Occlusion (only objects with OcclusionFadeTarget)")]
+    [Header("Player Occlusion (all OcclusionFadeTarget objects, including TPWalls)")]
     [SerializeField] private bool fadeOccludingObjects = true;
     [SerializeField, Range(0.05f, 1f)] private float occludedAlpha = 0.22f;
     [SerializeField, Min(0.01f)] private float fadeDuration = 0.18f;
@@ -148,9 +148,19 @@ public class OvercookedStyleCamera : MonoBehaviour
                 IReadOnlyList<OcclusionFadeTarget> fadeTargets = OcclusionFadeTarget.ActiveTargets;
                 for (int i = 0; i < fadeTargets.Count; i++)
                 {
-                    if (IsHidingPlayer(fadeTargets[i], viewRay, distance))
+                    OcclusionFadeTarget fadeTarget = fadeTargets[i];
+                    if (fadeTarget == null)
                     {
-                        AddOccludingRenderers(fadeTargets[i]);
+                        continue;
+                    }
+
+                    if (fadeTarget.FadeRenderersIndividually)
+                    {
+                        AddIndividuallyOccludingRenderers(fadeTarget, viewRay, distance);
+                    }
+                    else if (IsHidingPlayer(fadeTarget, viewRay, distance))
+                    {
+                        AddOccludingRenderers(fadeTarget);
                     }
                 }
             }
@@ -159,34 +169,50 @@ public class OvercookedStyleCamera : MonoBehaviour
         UpdateFadeStates();
     }
 
-    // Only objects marked with OcclusionFadeTarget (the cell entrances) are checked; everything else stays opaque.
+    // Only objects marked with OcclusionFadeTarget are checked; everything else stays opaque.
     private bool IsHidingPlayer(OcclusionFadeTarget fadeTarget, Ray viewRay, float distance)
     {
-        Vector3 nearbyCenter = target.position + Vector3.up * 0.5f;
-        float minimumWorldHeight = target.position.y + nearbyMinimumHeight;
         Renderer[] renderers = fadeTarget.Renderers;
         for (int i = 0; i < renderers.Length; i++)
         {
-            if (!IsValidOccluder(renderers[i]))
-            {
-                continue;
-            }
-
-            Bounds bounds = renderers[i].bounds;
-            if (fadeNearbyTallObjects && bounds.max.y >= minimumWorldHeight && bounds.SqrDistance(nearbyCenter) <= nearbyFadeRadius * nearbyFadeRadius)
-            {
-                return true;
-            }
-
-            bounds.Expand(sphereCastRadius * 2f);
-            float hitDistance;
-            if (bounds.IntersectRay(viewRay, out hitDistance) && hitDistance <= distance)
+            if (IsRendererHidingPlayer(renderers[i], viewRay, distance))
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private void AddIndividuallyOccludingRenderers(OcclusionFadeTarget fadeTarget, Ray viewRay, float distance)
+    {
+        Renderer[] renderers = fadeTarget.Renderers;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (IsRendererHidingPlayer(renderers[i], viewRay, distance))
+            {
+                currentOccluders.Add(renderers[i]);
+            }
+        }
+    }
+
+    private bool IsRendererHidingPlayer(Renderer renderer, Ray viewRay, float distance)
+    {
+        if (!IsValidOccluder(renderer))
+        {
+            return false;
+        }
+
+        Bounds bounds = renderer.bounds;
+        Vector3 nearbyCenter = target.position + Vector3.up * 0.5f;
+        float minimumWorldHeight = target.position.y + nearbyMinimumHeight;
+        if (fadeNearbyTallObjects && bounds.max.y >= minimumWorldHeight && bounds.SqrDistance(nearbyCenter) <= nearbyFadeRadius * nearbyFadeRadius)
+        {
+            return true;
+        }
+
+        bounds.Expand(sphereCastRadius * 2f);
+        return bounds.IntersectRay(viewRay, out float hitDistance) && hitDistance <= distance;
     }
 
     private void AddOccludingRenderers(OcclusionFadeTarget fadeTarget)
