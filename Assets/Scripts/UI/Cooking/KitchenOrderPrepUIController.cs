@@ -10,6 +10,13 @@ using UnityEngine.EventSystems;
 public class KitchenOrderPrepUIController : MonoBehaviour
 {
     [Serializable]
+    public class DecorationRequirement
+    {
+        public string item;
+        public int count;
+    }
+
+    [Serializable]
     public class OrderDefinition
     {
         public string id;
@@ -19,6 +26,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public string orderTitle;
         public string cakeFlavor;
         public string topping;
+        public DecorationRequirement[] decorations;
         public string contrabandItem;
         public string cakeSize;
         public string shapeType;
@@ -155,9 +163,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         public string SelectedTopping;
         public bool ToppingMatched;
         public float ToppingCoverage;
+        public bool DecorationMatched;
         public bool CakeGenerated;
         public int FinalPayout;
         public string[] ToppingOptions;
+    }
+
+    private sealed class PlacedDecoration
+    {
+        public string ItemName;
+        public RectTransform Rect;
     }
 
     [Header("Root")]
@@ -203,11 +218,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     {
         new ToppingSauceEntry("Chocolate", new Color(0.45f, 0.25f, 0.15f, 1f)),
         new ToppingSauceEntry("Fresa", new Color(0.86f, 0.20f, 0.30f, 1f)),
-        new ToppingSauceEntry("Caramelo", new Color(0.88f, 0.56f, 0.18f, 1f)),
-        new ToppingSauceEntry("Crema", new Color(0.99f, 0.96f, 0.84f, 1f)),
-        new ToppingSauceEntry("Glaseado", new Color(0.98f, 0.76f, 0.86f, 1f)),
-        new ToppingSauceEntry("Azucar glass", new Color(1f, 1f, 1f, 1f))
+        new ToppingSauceEntry("Caramelo", new Color(0.88f, 0.56f, 0.18f, 1f))
     };
+    [Tooltip("Toppings dragged onto the cake; itemName must match the decorations in the orders JSON.")]
+    [SerializeField] private NamedIconEntry[] toppingDecorations;
     [Tooltip("Container shown as the drop target in the mold minigame.")]
     [SerializeField] private Sprite preparationContainerSprite;
     [Tooltip("Cake sprites for Small, Medium and Large, in that order. Used until a flavor is chosen.")]
@@ -221,6 +235,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float wrongSizePenalty = 0.2f;
     [SerializeField, Range(0f, 1f)] private float badPlacementPenalty = 0.2f;
     [SerializeField, Range(0f, 1f)] private float wrongToppingPenalty = 0.2f;
+    [SerializeField, Range(0f, 1f)] private float wrongDecorationPenalty = 0.2f;
     [Tooltip("Taken in full at or below the minimum coverage, scaled down to nothing at the full-pay coverage.")]
     [SerializeField, Range(0f, 1f)] private float lowCoveragePenalty = 0.2f;
     [Tooltip("Cake coverage that earns the full payout.")]
@@ -275,7 +290,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
     private static readonly string[] CakeSizeLabels = { "Pequeno", "Mediano", "Grande" };
     private static readonly CakeSizeOption[] CakeSizeValues = { CakeSizeOption.Small, CakeSizeOption.Medium, CakeSizeOption.Large };
-    private static readonly string[] FallbackToppings = { "Crema", "Chocolate", "Azucar glass", "Fresa", "Glaseado", "Caramelo" };
+    private static readonly string[] FallbackToppings = { "Chocolate", "Fresa", "Caramelo" };
 
     private readonly List<RuntimeOrder> allOrders = new List<RuntimeOrder>();
     private readonly List<RuntimeOrder> spawnedOrders = new List<RuntimeOrder>();
@@ -383,6 +398,13 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Button[] toppingBottleButtons;
     private Image[] toppingBottleImages;
     private Text[] toppingBottleLabels;
+    private ToppingDragHandle[] toppingBottleHandles;
+    private ToppingDragHandle[] toppingDecorationHandles;
+    private Text[] toppingDecorationLabels;
+    private readonly List<PlacedDecoration> placedDecorations = new List<PlacedDecoration>();
+    private RectTransform toppingDragLayer;
+    private Image toppingDragGhost;
+    private int draggingBottleIndex = -1;
     private ToppingPaintSurface toppingPaintSurface;
     private RuntimeOrder toppingPaintOrder;
     private Text toppingCoverageText;
@@ -392,6 +414,41 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Text toppingFeedbackText;
     private static Sprite genericSauceBottleSprite;
 
+    private sealed class QueuedToast
+    {
+        public Sprite Icon;
+        public Sprite Badge;
+        public string Title;
+        public Color TitleColor;
+        public string Detail;
+        public string Note;
+    }
+
+    // The banner sits in the top band, right of the order cards and left of the timer, so it covers nothing in the kitchen menu.
+    private const float ToastRightEdgeX = 520f;
+    private const float ToastReadSeconds = 1.4f;
+    private const float ToastWithNoteReadSeconds = 3f;
+
+    private readonly Queue<QueuedToast> pendingToasts = new Queue<QueuedToast>();
+    private float currentToastReadSeconds;
+    private HudToast eventToast;
+    private Image eventToastIcon;
+    private Image eventToastBadge;
+    private Text eventToastTitleText;
+    private Text eventToastDetailText;
+    private Text eventToastNoteText;
+    private static readonly Color ToastGoodColor = new Color(0.16f, 0.48f, 0.20f, 1f);
+    private static readonly Color ToastBadColor = new Color(0.72f, 0.12f, 0.10f, 1f);
+    private static Sprite deliveredCheckSprite;
+    private static Sprite alertSprite;
+    private static Sprite clockSprite;
+
+    // Shared layout of the minigame tabs: instruction under the stage title, then the play area.
+    private const float MinigameInstructionY = -20f;
+    private const float MinigameContentAnchorY = 0.59f;
+    private const float SizeGameRootVerticalInset = 110f;
+    private const float ToppingDecorationSize = 48f;
+    private const float ToppingBottleDragWidth = 80f;
     private const float OrderCardWidth = 136f;
     private const float OrderCardHeight = 176f;
     private const float OrderCardSpacing = 14f;
@@ -439,6 +496,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         get { return spawnedOrders.Count; }
     }
 
+    // The order the player is cooking right now, or null if none.
+    public string ActivePrepOrderId
+    {
+        get { return activePrepOrder != null && activePrepOrder.Data != null ? activePrepOrder.Data.id : null; }
+    }
+
     private void Awake()
     {
         InitializeUi();
@@ -458,6 +521,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         UpdateBakeState();
         UpdateSizeScaleGame();
+        PumpEventToasts();
     }
 
     private void OnDisable()
@@ -843,6 +907,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         BuildDetailItemIcon();
         BuildRuntimeTabContent();
         BuildWaitingOrderState();
+        BuildHudToasts();
         BuildResultsMenu();
         BuildMapOverlay();
         BuildControlsPopup();
@@ -1391,24 +1456,24 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         ClearChildren(panel);
         Text title = CreateText("Instruction", panel, "Navega entre los pasteles y elige el del sabor pedido.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, MinigameInstructionY), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
         flavorCakeImage = CreateImage("FlavorCake", panel, Color.white);
         flavorCakeImage.preserveAspect = true;
         flavorCakeImage.raycastTarget = false;
-        SetRect(flavorCakeImage.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, 10f), new Vector2(340f, 261f), new Vector2(0.5f, 0.5f));
+        SetRect(flavorCakeImage.rectTransform, new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0f, 10f), new Vector2(340f, 261f), new Vector2(0.5f, 0.5f));
 
         // The name under each cake so the colors can't be mistaken for another flavor.
         flavorNameText = CreateText("FlavorName", panel, string.Empty, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(flavorNameText.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, -146f), new Vector2(360f, 38f), new Vector2(0.5f, 0.5f));
+        SetRect(flavorNameText.rectTransform, new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0f, -146f), new Vector2(360f, 38f), new Vector2(0.5f, 0.5f));
 
         flavorPreviousButton = CreatePlacementIconButton("PreviousFlavorButton", panel, PlacementIcon.ArrowLeft, Vector2.zero);
-        SetRect(flavorPreviousButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(-300f, 0f), new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
+        SetRect(flavorPreviousButton.GetComponent<RectTransform>(), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(-300f, 0f), new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
         flavorPreviousButton.onClick.AddListener(() => MoveFlavorCarousel(-1));
         ButtonSfx.Attach(flavorPreviousButton, SfxId.KitchenUiClick);
 
         flavorNextButton = CreatePlacementIconButton("NextFlavorButton", panel, PlacementIcon.ArrowRight, Vector2.zero);
-        SetRect(flavorNextButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(300f, 0f), new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
+        SetRect(flavorNextButton.GetComponent<RectTransform>(), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(300f, 0f), new Vector2(80f, 84f), new Vector2(0.5f, 0.5f));
         flavorNextButton.onClick.AddListener(() => MoveFlavorCarousel(1));
         ButtonSfx.Attach(flavorNextButton, SfxId.KitchenUiClick);
 
@@ -1420,20 +1485,20 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             Image dot = CreateImage("FlavorDot_" + i, panel, Color.white);
             dot.sprite = GetFlavorDotSprite();
             dot.raycastTarget = false;
-            SetRect(dot.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2((i - (flavorCount - 1) * 0.5f) * dotSpacing, -182f), new Vector2(14f, 14f), new Vector2(0.5f, 0.5f));
+            SetRect(dot.rectTransform, new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), new Vector2((i - (flavorCount - 1) * 0.5f) * dotSpacing, -182f), new Vector2(14f, 14f), new Vector2(0.5f, 0.5f));
             flavorPageDots[i] = dot;
         }
 
         flavorSelectButton = CreateButton("SelectFlavorButton", panel, Color.white);
         StylePlacementButton(flavorSelectButton, placementConfirmButtonSprite, true);
-        SetRect(flavorSelectButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 96f), new Vector2(320f, 84f), new Vector2(0.5f, 0.5f));
+        SetRect(flavorSelectButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 114f), new Vector2(320f, 84f), new Vector2(0.5f, 0.5f));
         Text selectLabel = CreateText("Label", flavorSelectButton.GetComponent<RectTransform>(), "Elegir este pastel", 32, FontStyle.Normal, TextAnchor.MiddleCenter);
         SetRect(selectLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0f, 3f), new Vector2(-40f, -20f), new Vector2(0.5f, 0.5f));
         flavorSelectButton.onClick.AddListener(ConfirmFlavorSelection);
         ButtonSfx.Attach(flavorSelectButton, SfxId.KitchenUiClick);
 
         flavorFeedbackText = CreateText("FlavorFeedbackText", panel, "Selecciona el sabor del pastel.", 20, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(flavorFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(760f, 28f), new Vector2(0.5f, 0.5f));
+        SetRect(flavorFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 50f), new Vector2(760f, 28f), new Vector2(0.5f, 0.5f));
     }
 
     private void MoveFlavorCarousel(int direction)
@@ -1464,6 +1529,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         // A wrong flavor is allowed; it only lowers the payout, like the topping.
         activePrepOrder.SelectedFlavor = flavor.flavorName;
         activePrepOrder.FlavorMatched = string.Equals(flavor.flavorName, activePrepOrder.Data.cakeFlavor, StringComparison.OrdinalIgnoreCase);
+        if (!activePrepOrder.FlavorMatched)
+        {
+            ShowPrepMistake("¡Sabor equivocado!", activePrepOrder, wrongFlavorPenalty);
+        }
+
         RefreshAllUi();
         ActivateTab(SizeTabIndex, true);
     }
@@ -1589,7 +1659,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         sizeOptionBackgrounds = new Image[0];
         sizeGameContent = panel;
         sizeFeedbackText = CreateText("SizeFeedbackText", panel, "Selecciona el tamano exacto del pastel.", 22, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(sizeFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(700f, 34f), new Vector2(0.5f, 0.5f));
+        SetRect(sizeFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 46f), new Vector2(700f, 34f), new Vector2(0.5f, 0.5f));
     }
 
     private void EnsureSizeGameAssigned(RuntimeOrder order)
@@ -1620,7 +1690,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (sizeGameRoot == null)
         {
             sizeGameRoot = CreateRect("SizeGameRoot", sizeGameContent);
-            SetRect(sizeGameRoot, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-40f, -110f), new Vector2(0.5f, 0.5f));
+            SetRect(sizeGameRoot, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-40f, -SizeGameRootVerticalInset), new Vector2(0.5f, 0.5f));
         }
 
         ClearChildren(sizeGameRoot);
@@ -1647,10 +1717,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
     }
 
+    // The size game lives in an inset root, so its instruction is offset to line up with the other tabs.
+    private static Vector2 GetSizeInstructionPosition()
+    {
+        return new Vector2(0f, MinigameInstructionY + SizeGameRootVerticalInset * 0.5f);
+    }
+
     private void BuildCorrectMoldGame(RuntimeOrder order)
     {
         Text title = CreateText("MoldInstruction", sizeGameRoot, "Arrastra el molde del tamano solicitado.", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(720f, 44f), new Vector2(0.5f, 0.5f));
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), GetSizeInstructionPosition(), new Vector2(720f, 44f), new Vector2(0.5f, 0.5f));
         CreateSizeDragPieces(sizeGameRoot, false, 80f);
         RectTransform targetRoot = CreateRect("MoldTarget", sizeGameRoot);
         SetRect(targetRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -130f), new Vector2(440f, 210f), new Vector2(0.5f, 0.5f));
@@ -1669,7 +1745,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private void BuildSortCakesGame(RuntimeOrder order)
     {
         Text title = CreateText("SortInstruction", sizeGameRoot, "Ordena los pasteles de menor a mayor y selecciona el solicitado.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(820f, 44f), new Vector2(0.5f, 0.5f));
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), GetSizeInstructionPosition(), new Vector2(820f, 44f), new Vector2(0.5f, 0.5f));
         sizeSortArea = CreateRect("SortArea", sizeGameRoot);
         SetRect(sizeSortArea, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -12f), new Vector2(760f, 190f), new Vector2(0.5f, 0.5f));
         Image areaImage = sizeSortArea.gameObject.AddComponent<Image>();
@@ -1685,7 +1761,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private void BuildFillScaleGame(RuntimeOrder order)
     {
         Text title = CreateText("ScaleInstruction", sizeGameRoot, "Deten la medida en el tamano solicitado.", 26, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(720f, 44f), new Vector2(0.5f, 0.5f));
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), GetSizeInstructionPosition(), new Vector2(720f, 44f), new Vector2(0.5f, 0.5f));
         RectTransform bar = CreateRect("ScaleBar", sizeGameRoot);
         SetRect(bar, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(720f, 70f), new Vector2(0.5f, 0.5f));
         Image barImage = bar.gameObject.AddComponent<Image>();
@@ -1886,10 +1962,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         ClearChildren(panel);
         Text title = CreateText("Instruction", panel, "Cubre la sombra con el objeto: muevelo, giralo y ajusta su tamano.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, MinigameInstructionY), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
         placementPlayArea = CreateRect("PlacementPlayArea", panel);
-        SetRect(placementPlayArea, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), new Vector2(0f, 0f), PlacementPlayAreaSize, new Vector2(0.5f, 0.5f));
+        SetRect(placementPlayArea, new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0f, 0f), PlacementPlayAreaSize, new Vector2(0.5f, 0.5f));
         Image playAreaImage = placementPlayArea.gameObject.AddComponent<Image>();
         playAreaImage.color = new Color(0.97f, 0.91f, 0.82f, 1f);
         Outline playAreaOutline = placementPlayArea.gameObject.AddComponent<Outline>();
@@ -1913,7 +1989,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         placementPieceView.Initialize(placementPlayArea);
         placementPieceView.Changed += HandlePlacementPieceChanged;
 
-        const float controlsY = 106f;
+        const float controlsY = 122f;
         placementRotateLeftButton = CreatePlacementIconButton("RotateLeftButton", panel, PlacementIcon.RotateLeft, new Vector2(-360f, controlsY));
         placementRotateLeftButton.onClick.AddListener(() => RotatePlacementPiece(PlacementRotationStep));
 
@@ -1937,10 +2013,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         ButtonSfx.Attach(placementConfirmButton, SfxId.KitchenUiClick);
 
         placementStatusText = CreateText("PlacementStatusText", panel, "Aun no has colocado el objeto.", 19, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(placementStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
+        SetRect(placementStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
 
         placementScoreText = CreateText("PlacementScoreText", panel, "Precision: 0%", 18, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(placementScoreText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(400f, 22f), new Vector2(0.5f, 0.5f));
+        SetRect(placementScoreText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(400f, 22f), new Vector2(0.5f, 0.5f));
     }
 
     private Button CreatePlacementIconButton(string objectName, RectTransform panel, PlacementIcon icon, Vector2 position)
@@ -1999,7 +2075,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         ClearChildren(panel);
         Text title = CreateText("Instruction", panel, "Apaga el horno con OFF cuando la linea pase por el area verde.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, MinigameInstructionY), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
         bakeOvenImage = CreateImage("Oven", panel, Color.white);
         bakeOvenImage.sprite = ovenOffSprite;
@@ -2044,7 +2120,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         CreateBakeSideCake("BurntCake", panel, burntCakeSprite, 485f, "Quemado");
 
         bakeStatusText = CreateText("BakeStatusText", panel, string.Empty, 20, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(bakeStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(820f, 28f), new Vector2(0.5f, 0.5f));
+        SetRect(bakeStatusText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 56f), new Vector2(820f, 28f), new Vector2(0.5f, 0.5f));
     }
 
     private Button CreateOvenButton(string objectName, RectTransform ovenRect, Sprite sprite, Sprite pressedSprite, Vector2 sourceCenter)
@@ -2092,12 +2168,12 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         ClearChildren(panel);
-        Text title = CreateText("Instruction", panel, "Elige la salsa del pedido y cubre el pastel: manten presionado y arrastra.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
+        Text title = CreateText("Instruction", panel, "Arrastra la salsa para cubrir el pastel y suelta encima los toppings de la receta.", 24, FontStyle.Bold, TextAnchor.MiddleCenter);
+        SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, MinigameInstructionY), new Vector2(820f, 40f), new Vector2(0.5f, 0.5f));
 
-        // Same framed area as the placement minigame: bottles on the left, the cake to paint on the right.
+        // Same framed area as the placement minigame: bottles and toppings on the left, the cake to paint on the right.
         RectTransform playArea = CreateRect("ToppingPlayArea", panel);
-        SetRect(playArea, new Vector2(0.5f, 0.56f), new Vector2(0.5f, 0.56f), Vector2.zero, PlacementPlayAreaSize, new Vector2(0.5f, 0.5f));
+        SetRect(playArea, new Vector2(0.5f, MinigameContentAnchorY), new Vector2(0.5f, MinigameContentAnchorY), Vector2.zero, PlacementPlayAreaSize, new Vector2(0.5f, 0.5f));
         Image playAreaImage = playArea.gameObject.AddComponent<Image>();
         playAreaImage.color = new Color(0.97f, 0.91f, 0.82f, 1f);
         Outline playAreaOutline = playArea.gameObject.AddComponent<Outline>();
@@ -2107,7 +2183,8 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         toppingBottleButtons = new Button[3];
         toppingBottleImages = new Image[3];
         toppingBottleLabels = new Text[3];
-        float[] bottleX = { -330f, -220f, -110f };
+        toppingBottleHandles = new ToppingDragHandle[3];
+        float[] toppingColumnX = { -330f, -220f, -110f };
         for (int i = 0; i < 3; i++)
         {
             // The bottle PNG is the button itself: no background, no outline, and it only darkens on hover.
@@ -2125,20 +2202,47 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             }
 
             RectTransform buttonRect = button.GetComponent<RectTransform>();
-            SetRect(buttonRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(bottleX[i], 20f), new Vector2(90f, 200f), new Vector2(0.5f, 0.5f));
+            SetRect(buttonRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(toppingColumnX[i], 84f), new Vector2(70f, 140f), new Vector2(0.5f, 0.5f));
 
             Image bottleImage = button.GetComponent<Image>();
             bottleImage.preserveAspect = true;
 
-            Text label = CreateText("SauceLabel_" + i, playArea, "--", 20, FontStyle.Bold, TextAnchor.MiddleCenter);
-            SetRect(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(bottleX[i], -118f), new Vector2(108f, 28f), new Vector2(0.5f, 0.5f));
+            Text label = CreateText("SauceLabel_" + i, playArea, "--", 18, FontStyle.Bold, TextAnchor.MiddleCenter);
+            SetRect(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(toppingColumnX[i], -2f), new Vector2(108f, 24f), new Vector2(0.5f, 0.5f));
 
             int capturedIndex = i;
-            button.onClick.AddListener(() => HandleToppingBottleSelected(capturedIndex));
+            ToppingDragHandle handle = button.gameObject.AddComponent<ToppingDragHandle>();
+            handle.DragStarted += screenPosition => HandleBottleDragStarted(capturedIndex, screenPosition);
+            handle.Dragged += screenPosition => HandleBottleDragged(capturedIndex, screenPosition);
+            handle.DragEnded += screenPosition => HandleBottleDragEnded();
             ButtonSfx.Attach(button, SfxId.KitchenUiClick);
             toppingBottleButtons[i] = button;
             toppingBottleImages[i] = bottleImage;
             toppingBottleLabels[i] = label;
+            toppingBottleHandles[i] = handle;
+        }
+
+        int decorationCount = toppingDecorations != null ? Mathf.Min(toppingDecorations.Length, toppingColumnX.Length) : 0;
+        toppingDecorationHandles = new ToppingDragHandle[decorationCount];
+        toppingDecorationLabels = new Text[decorationCount];
+        for (int i = 0; i < decorationCount; i++)
+        {
+            Image decorationImage = CreateImage("DecorationSource_" + i, playArea, Color.white);
+            decorationImage.sprite = toppingDecorations[i].icon;
+            decorationImage.preserveAspect = true;
+            decorationImage.gameObject.AddComponent<CursorChange>();
+            SetRect(decorationImage.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(toppingColumnX[i], -72f), new Vector2(64f, 64f), new Vector2(0.5f, 0.5f));
+
+            Text label = CreateText("DecorationLabel_" + i, playArea, toppingDecorations[i].itemName, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
+            SetRect(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(toppingColumnX[i], -122f), new Vector2(108f, 24f), new Vector2(0.5f, 0.5f));
+
+            NamedIconEntry entry = toppingDecorations[i];
+            ToppingDragHandle handle = decorationImage.gameObject.AddComponent<ToppingDragHandle>();
+            handle.DragStarted += screenPosition => ShowToppingDragGhost(entry.icon, new Vector2(ToppingDecorationSize, ToppingDecorationSize), new Vector2(0.5f, 0.5f), 0f, screenPosition);
+            handle.Dragged += MoveToppingDragGhost;
+            handle.DragEnded += screenPosition => HandleDecorationSourceDropped(entry, screenPosition);
+            toppingDecorationHandles[i] = handle;
+            toppingDecorationLabels[i] = label;
         }
 
         GameObject surfaceObject = new GameObject("ToppingPaintSurface", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
@@ -2152,7 +2256,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         toppingCoverageText = CreateText("ToppingCoverageText", playArea, "Cobertura: 0%", 30, FontStyle.Bold, TextAnchor.MiddleCenter);
         SetRect(toppingCoverageText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(190f, -138f), new Vector2(320f, 36f), new Vector2(0.5f, 0.5f));
 
-        const float controlsY = 106f;
+        const float controlsY = 122f;
         toppingClearButton = CreateButton("ClearSauceButton", panel, Color.white);
         StylePlacementButton(toppingClearButton, placementConfirmButtonSprite, true);
         SetRect(toppingClearButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-180f, controlsY), new Vector2(240f, 84f), new Vector2(0.5f, 0.5f));
@@ -2169,11 +2273,19 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         toppingFinishButton.onClick.AddListener(FinishToppingCake);
         ButtonSfx.Attach(toppingFinishButton, SfxId.KitchenUiClick);
 
-        toppingFeedbackText = CreateText("ToppingFeedbackText", panel, "Elige la salsa que pidio el preso.", 19, FontStyle.Normal, TextAnchor.MiddleCenter);
-        SetRect(toppingFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 38f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
+        toppingFeedbackText = CreateText("ToppingFeedbackText", panel, "Arrastra la salsa que pidio el preso sobre el pastel.", 19, FontStyle.Normal, TextAnchor.MiddleCenter);
+        SetRect(toppingFeedbackText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 58f), new Vector2(820f, 24f), new Vector2(0.5f, 0.5f));
 
         toppingGoalText = CreateText("ToppingGoalText", panel, string.Empty, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
-        SetRect(toppingGoalText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(600f, 22f), new Vector2(0.5f, 0.5f));
+        SetRect(toppingGoalText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(600f, 22f), new Vector2(0.5f, 0.5f));
+
+        // Created last so whatever is being dragged draws above the whole tab.
+        toppingDragLayer = CreateRect("ToppingDragLayer", panel);
+        SetRect(toppingDragLayer, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+        toppingDragGhost = CreateImage("ToppingDragGhost", toppingDragLayer, Color.white);
+        toppingDragGhost.preserveAspect = true;
+        toppingDragGhost.raycastTarget = false;
+        toppingDragGhost.gameObject.SetActive(false);
     }
 
     private void LoadOrdersFromJson()
@@ -2485,6 +2597,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         activePrepOrder.PlacementCorrect = distance <= PlacementDistanceThreshold && angleDelta <= PlacementAngleThreshold && scaleDelta <= PlacementScaleThreshold;
         activePrepOrder.PlacementCompleted = true;
         activePrepOrder.PlacementScore = score;
+        if (!activePrepOrder.PlacementCorrect)
+        {
+            ShowPrepMistake("¡Objeto mal colocado!", activePrepOrder, badPlacementPenalty);
+        }
+
         // The oven turns on by itself; ON is only needed to retry after a miss.
         BeginBakeAttempt(activePrepOrder);
         RefreshAllUi();
@@ -2579,7 +2696,53 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             && activePrepOrder.BakeOutcome != BakeResult.None && !activePrepOrder.BakeInProgress;
     }
 
-    private void HandleToppingBottleSelected(int optionIndex)
+    private void HandleBottleDragStarted(int optionIndex, Vector2 screenPosition)
+    {
+        Sprite bottleSprite = toppingBottleImages[optionIndex].sprite;
+        if (bottleSprite == null)
+        {
+            return;
+        }
+
+        // Upside down with the nozzle on the cursor, so the sauce comes out exactly where the player points.
+        draggingBottleIndex = optionIndex;
+        Vector2 size = new Vector2(ToppingBottleDragWidth, ToppingBottleDragWidth * bottleSprite.rect.height / bottleSprite.rect.width);
+        ShowToppingDragGhost(bottleSprite, size, new Vector2(0.5f, 1f), 180f, screenPosition);
+        RefreshToppingUi();
+    }
+
+    private void HandleBottleDragged(int optionIndex, Vector2 screenPosition)
+    {
+        MoveToppingDragGhost(screenPosition);
+        if (toppingPaintSurface == null || draggingBottleIndex != optionIndex)
+        {
+            return;
+        }
+
+        if (!toppingPaintSurface.IsOverPlate(screenPosition))
+        {
+            toppingPaintSurface.EndStroke();
+            return;
+        }
+
+        // The sauce only counts as chosen once it reaches the plate, so picking up a bottle by mistake wipes nothing.
+        SelectToppingSauce(optionIndex);
+        toppingPaintSurface.PaintAt(screenPosition);
+    }
+
+    private void HandleBottleDragEnded()
+    {
+        draggingBottleIndex = -1;
+        HideToppingDragGhost();
+        if (toppingPaintSurface != null)
+        {
+            toppingPaintSurface.EndStroke();
+        }
+
+        RefreshToppingUi();
+    }
+
+    private void SelectToppingSauce(int optionIndex)
     {
         if (!IsToppingStepAvailable() || activePrepOrder.ToppingOptions == null)
         {
@@ -2598,7 +2761,6 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         // A wrong sauce is allowed; it only lowers the payout. Switching sauce wipes the cake so colors never mix.
-        bool hadPaint = toppingPaintSurface != null && toppingPaintSurface.HasPaint;
         activePrepOrder.SelectedTopping = option;
         activePrepOrder.ToppingMatched = string.Equals(option, activePrepOrder.Data.topping, StringComparison.OrdinalIgnoreCase);
         activePrepOrder.ToppingCoverage = 0f;
@@ -2609,10 +2771,187 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         RefreshToppingUi();
-        if (hadPaint && toppingFeedbackText != null)
+    }
+
+    private void ShowToppingDragGhost(Sprite sprite, Vector2 size, Vector2 pivot, float rotationDegrees, Vector2 screenPosition)
+    {
+        RectTransform ghostRect = toppingDragGhost.rectTransform;
+        toppingDragGhost.sprite = sprite;
+        SetRect(ghostRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size, pivot);
+        ghostRect.localRotation = Quaternion.Euler(0f, 0f, rotationDegrees);
+        toppingDragGhost.gameObject.SetActive(true);
+        MoveToppingDragGhost(screenPosition);
+    }
+
+    private void MoveToppingDragGhost(Vector2 screenPosition)
+    {
+        Vector2 localPoint;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(toppingDragLayer, screenPosition, GetUiEventCamera(), out localPoint))
         {
-            toppingFeedbackText.text = "Cambiaste de salsa: el pastel se limpio.";
+            toppingDragGhost.rectTransform.anchoredPosition = localPoint;
         }
+    }
+
+    private void HideToppingDragGhost()
+    {
+        if (toppingDragGhost != null)
+        {
+            toppingDragGhost.gameObject.SetActive(false);
+        }
+    }
+
+    private Camera GetUiEventCamera()
+    {
+        return rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? rootCanvas.worldCamera : null;
+    }
+
+    private void HandleDecorationSourceDropped(NamedIconEntry entry, Vector2 screenPosition)
+    {
+        HideToppingDragGhost();
+        if (toppingPaintSurface != null && toppingPaintSurface.IsOverCake(screenPosition))
+        {
+            AddPlacedDecoration(entry, screenPosition);
+        }
+
+        RefreshToppingUi();
+    }
+
+    private void AddPlacedDecoration(NamedIconEntry entry, Vector2 screenPosition)
+    {
+        Image image = CreateImage("PlacedDecoration", toppingPaintSurface.transform, Color.white);
+        image.sprite = entry.icon;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        SetRect(image.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(ToppingDecorationSize, ToppingDecorationSize), new Vector2(0.5f, 0.5f));
+
+        PlacedDecoration placed = new PlacedDecoration { ItemName = entry.itemName, Rect = image.rectTransform };
+        placedDecorations.Add(placed);
+        MovePlacedDecoration(placed, screenPosition);
+
+        // Already on the cake it can still be moved, or dragged off the cake to take it away.
+        ToppingDragHandle handle = image.gameObject.AddComponent<ToppingDragHandle>();
+        handle.DragStarted += position => placed.Rect.SetAsLastSibling();
+        handle.Dragged += position => MovePlacedDecoration(placed, position);
+        handle.DragEnded += position => HandlePlacedDecorationDropped(placed, position);
+    }
+
+    private void MovePlacedDecoration(PlacedDecoration placed, Vector2 screenPosition)
+    {
+        Vector2 localPoint;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)placed.Rect.parent, screenPosition, GetUiEventCamera(), out localPoint))
+        {
+            placed.Rect.anchoredPosition = localPoint;
+        }
+    }
+
+    private void HandlePlacedDecorationDropped(PlacedDecoration placed, Vector2 screenPosition)
+    {
+        if (toppingPaintSurface.IsOverCake(screenPosition))
+        {
+            return;
+        }
+
+        placedDecorations.Remove(placed);
+        Destroy(placed.Rect.gameObject);
+        RefreshToppingUi();
+    }
+
+    private void ClearPlacedDecorations()
+    {
+        for (int i = 0; i < placedDecorations.Count; i++)
+        {
+            Destroy(placedDecorations[i].Rect.gameObject);
+        }
+
+        placedDecorations.Clear();
+    }
+
+    // The cake needs exactly what the recipe asks for: no topping short and none extra.
+    private bool AreDecorationsCorrect(RuntimeOrder order)
+    {
+        int requiredTotal = 0;
+        DecorationRequirement[] requirements = order.Data.decorations;
+        for (int i = 0; requirements != null && i < requirements.Length; i++)
+        {
+            requiredTotal += requirements[i].count;
+            if (CountPlacedDecorations(requirements[i].item) != requirements[i].count)
+            {
+                return false;
+            }
+        }
+
+        return placedDecorations.Count == requiredTotal;
+    }
+
+    private int CountPlacedDecorations(string itemName)
+    {
+        int count = 0;
+        for (int i = 0; i < placedDecorations.Count; i++)
+        {
+            if (string.Equals(placedDecorations[i].ItemName, itemName, StringComparison.OrdinalIgnoreCase))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static int GetRequiredDecorationCount(RuntimeOrder order, string itemName)
+    {
+        DecorationRequirement[] requirements = order != null ? order.Data.decorations : null;
+        for (int i = 0; requirements != null && i < requirements.Length; i++)
+        {
+            if (string.Equals(requirements[i].item, itemName, StringComparison.OrdinalIgnoreCase))
+            {
+                return requirements[i].count;
+            }
+        }
+
+        return 0;
+    }
+
+    // "2 Cerezas, 1 Chispa" for the recipe card.
+    private static string FormatDecorations(DecorationRequirement[] requirements)
+    {
+        List<string> parts = new List<string>();
+        for (int i = 0; requirements != null && i < requirements.Length; i++)
+        {
+            parts.Add(requirements[i].count + " " + requirements[i].item + (requirements[i].count == 1 ? string.Empty : "s"));
+        }
+
+        return string.Join(", ", parts.ToArray());
+    }
+
+    // Each topping shows how many are on the cake against how many the recipe asks for.
+    private void RefreshDecorationLabels(RuntimeOrder order)
+    {
+        for (int i = 0; i < toppingDecorationLabels.Length; i++)
+        {
+            string itemName = toppingDecorations[i].itemName;
+            int required = GetRequiredDecorationCount(order, itemName);
+            int placed = CountPlacedDecorations(itemName);
+
+            Text label = toppingDecorationLabels[i];
+            if (required > 0)
+            {
+                label.text = itemName + " " + placed + "/" + required;
+            }
+            else
+            {
+                label.text = placed > 0 ? itemName + " " + placed : itemName;
+            }
+
+            label.color = placed > required ? ToastBadColor : (required > 0 && placed == required ? ToastGoodColor : Color.black);
+        }
+    }
+
+    // The cake to paint takes the random shape this order got for its hole in the placement minigame.
+    private void ApplyToppingCakeShape(RuntimeOrder order)
+    {
+        PlacementHoleShape shape = order.HoleShape;
+        Quaternion toShapeSpace = Quaternion.Euler(0f, 0f, -order.HoleRotationDegrees);
+        toppingPaintSurface.SetCakeShape((point, radius) => GetHoleShapeDistance(shape, toShapeSpace * point, radius));
     }
 
     private void HandleToppingPainted()
@@ -2634,6 +2973,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         toppingPaintSurface.Clear();
+        ClearPlacedDecorations();
         activePrepOrder.ToppingCoverage = 0f;
         RefreshToppingUi();
     }
@@ -2646,6 +2986,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         activePrepOrder.ToppingCoverage = toppingPaintSurface.Coverage;
+        activePrepOrder.DecorationMatched = AreDecorationsCorrect(activePrepOrder);
         activePrepOrder.FinalPayout = CalculateFinalPayout(activePrepOrder);
         if (!AddCakeToInventory(activePrepOrder))
         {
@@ -2671,7 +3012,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             perfectCakeCount++;
         }
 
-        ShowInventoryMessage(GetFinishedCakeMessage(finishedOrder));
+        ShowFinishedCakeToast(finishedOrder);
     }
 
     private ToppingSauceEntry FindSauce(string toppingName)
@@ -2792,7 +3133,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         OrderDefinition order = selectedOrder.Data;
         if (detailTitleText != null) detailTitleText.text = order.orderTitle;
         // The whole recipe lives in one text block so a wrapped long value pushes the next line down instead of overlapping it.
-        if (detailCakeColorText != null) detailCakeColorText.text = "Sabor: " + order.cakeFlavor + "\nTamano: " + GetCakeSizeLabel(selectedOrder.RequiredCakeSize) + "\nTopping: " + order.topping;
+        if (detailCakeColorText != null) detailCakeColorText.text = "Sabor: " + order.cakeFlavor + "\nTamano: " + GetCakeSizeLabel(selectedOrder.RequiredCakeSize) + "\nSalsa: " + order.topping + "\nToppings: " + FormatDecorations(order.decorations);
         if (detailToppingText != null) detailToppingText.text = string.Empty;
         if (detailItemLabelText != null) detailItemLabelText.text = "Objeto a colocar:";
         RefreshDetailItemIcon(order.contrabandItem);
@@ -3058,8 +3399,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             toppingPaintOrder = activePrepOrder;
             toppingPaintSurface.Clear();
+            ClearPlacedDecorations();
             if (activePrepOrder != null)
             {
+                ApplyToppingCakeShape(activePrepOrder);
                 activePrepOrder.ToppingCoverage = 0f;
                 if (!string.IsNullOrEmpty(activePrepOrder.SelectedTopping))
                 {
@@ -3081,8 +3424,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             {
                 toppingBottleLabels[i].text = "--";
                 toppingBottleImages[i].enabled = false;
+                toppingBottleHandles[i].SetInteractable(false);
             }
 
+            SetDecorationSourcesInteractable(false);
+            RefreshDecorationLabels(null);
             return;
         }
 
@@ -3090,6 +3436,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         bool available = IsToppingStepAvailable();
         bool hasSauce = !string.IsNullOrEmpty(activePrepOrder.SelectedTopping);
         bool hasPaint = toppingPaintSurface.HasPaint;
+        bool hasDecorations = placedDecorations.Count > 0;
 
         for (int i = 0; i < toppingBottleButtons.Length; i++)
         {
@@ -3113,16 +3460,19 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
             toppingBottleLabels[i].text = option ?? "--";
 
-            // The chosen bottle grows, like picking it up; the others fade a little.
+            // The sauce in use grows a little and the others fade; the bottle in the player's hand leaves a faint spot behind.
             bool isSelected = hasSauce && string.Equals(option, activePrepOrder.SelectedTopping, StringComparison.OrdinalIgnoreCase);
-            toppingBottleButtons[i].transform.localScale = Vector3.one * (isSelected ? 1.2f : 1f);
-            baseColor.a = hasSauce && !isSelected ? 0.6f : 1f;
+            toppingBottleButtons[i].transform.localScale = Vector3.one * (isSelected ? 1.1f : 1f);
+            baseColor.a = i == draggingBottleIndex ? 0.25f : (hasSauce && !isSelected ? 0.6f : 1f);
             toppingBottleLabels[i].fontStyle = isSelected ? FontStyle.Bold : FontStyle.Normal;
             toppingBottleButtons[i].interactable = available;
+            toppingBottleHandles[i].SetInteractable(available && option != null);
             SetBottleColors(toppingBottleButtons[i], baseColor);
         }
 
-        SetToppingControlsInteractable(available && hasSauce, available && hasPaint, available && hasSauce && hasPaint);
+        SetDecorationSourcesInteractable(available);
+        RefreshDecorationLabels(activePrepOrder);
+        SetToppingControlsInteractable(available, available && (hasPaint || hasDecorations), available && hasSauce && hasPaint);
 
         int coveragePercent = Mathf.FloorToInt(activePrepOrder.ToppingCoverage * 100f);
         bool enough = IsCoverageEnough(activePrepOrder);
@@ -3133,13 +3483,17 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         {
             toppingFeedbackText.text = "Termina de hornear antes de agregar el topping.";
         }
-        else if (!hasSauce)
-        {
-            toppingFeedbackText.text = "Elige la salsa que pidio el preso.";
-        }
         else if (!hasPaint)
         {
-            toppingFeedbackText.text = "Manten presionado el clic y arrastra sobre el pastel para echar la salsa.";
+            toppingFeedbackText.text = "Arrastra la salsa que pidio el preso sobre el pastel.";
+        }
+        else if (!hasDecorations)
+        {
+            toppingFeedbackText.text = "Ahora arrastra los toppings de la receta y sueltalos sobre el pastel.";
+        }
+        else if (!AreDecorationsCorrect(activePrepOrder))
+        {
+            toppingFeedbackText.text = "Revisa los toppings: la cantidad todavia no coincide con la receta.";
         }
         else if (enough)
         {
@@ -3164,6 +3518,14 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         else
         {
             button.image.color = baseColor;
+        }
+    }
+
+    private void SetDecorationSourcesInteractable(bool interactable)
+    {
+        for (int i = 0; i < toppingDecorationHandles.Length; i++)
+        {
+            toppingDecorationHandles[i].SetInteractable(interactable);
         }
     }
 
@@ -3515,6 +3877,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (!order.SizeMatched) penalty += wrongSizePenalty;
         if (!order.PlacementCorrect) penalty += badPlacementPenalty;
         if (!order.ToppingMatched) penalty += wrongToppingPenalty;
+        if (!order.DecorationMatched) penalty += wrongDecorationPenalty;
         penalty += lowCoveragePenalty * GetCoveragePenaltyFactor(order);
 
         return Mathf.Max(0, Mathf.RoundToInt(order.BasePayoutValue * (1f - Mathf.Clamp01(penalty))));
@@ -3526,17 +3889,32 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         if (!order.FlavorMatched) mistakes.Add("sabor");
         if (!order.SizeMatched) mistakes.Add("tamano");
         if (!order.PlacementCorrect) mistakes.Add("objeto");
-        if (!order.ToppingMatched) mistakes.Add("topping");
+        if (!order.ToppingMatched) mistakes.Add("salsa");
+        if (!order.DecorationMatched) mistakes.Add("topping");
         if (!IsCoverageEnough(order)) mistakes.Add("cobertura " + Mathf.FloorToInt(order.ToppingCoverage * 100f) + "%");
         return mistakes;
     }
 
-    private string GetFinishedCakeMessage(RuntimeOrder order)
+    private void ShowFinishedCakeToast(RuntimeOrder order)
     {
+        Sprite cakeIcon = GetToppingCakeIcon(order.SelectedTopping);
         List<string> mistakes = GetCakeMistakes(order);
-        string message = "Pastel para la celda #" + order.Data.cellNumber + " listo: Q" + order.FinalPayout;
-        return mistakes.Count == 0 ? message + ". Perfecto!" : message + " (errores: " + string.Join(", ", mistakes.ToArray()) + ")";
+        if (mistakes.Count == 0)
+        {
+            ShowEventToast(cakeIcon, GetDeliveredCheckSprite(), "¡Pastel perfecto!", ToastGoodColor, "Celda " + order.Data.cellNumber + "  Q" + order.FinalPayout);
+            return;
+        }
+
+        int discount = order.BasePayoutValue - order.FinalPayout;
+        ShowEventToast(cakeIcon, GetAlertSprite(), "¡Pastel con errores!", ToastBadColor, "Falló: " + string.Join(", ", mistakes.ToArray()), "Descuento: -Q" + discount + "   Pago: Q" + order.FinalPayout);
     }
+
+    // For mistakes that can't be undone, shown right away; the discount itself applies when the cake is finished.
+    private void ShowPrepMistake(string title, RuntimeOrder order, float penalty)
+    {
+        ShowEventToast(GetAlertSprite(), null, title, ToastBadColor, "Se te descontarán Q" + Mathf.RoundToInt(order.BasePayoutValue * penalty));
+    }
+
     private bool AddCakeToInventory(RuntimeOrder order)
     {
         EnsurePlayerController();
@@ -3553,6 +3931,235 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             payoutValue = order.FinalPayout,
             icon = GetToppingCakeIcon(order.SelectedTopping)
         });
+    }
+
+    public void ShowTimeAlert(string message, bool urgent)
+    {
+        ShowEventToast(GetClockSprite(), null, message, urgent ? ToastBadColor : new Color(0.35f, 0.18f, 0.12f, 1f), string.Empty);
+        AudioManager.Play(SfxId.OrderActivate);
+    }
+
+    public void ShowCakeDelivered(Sprite cakeIcon, string cellLabel, int payout)
+    {
+        ShowEventToast(cakeIcon, GetDeliveredCheckSprite(), "¡Pastel entregado!", ToastGoodColor, cellLabel + "  +Q" + payout);
+    }
+
+    public void ShowOrderAccepted(OrderDefinition order, string cellLabel)
+    {
+        ShowEventToast(GetToppingCakeIcon(order.topping), null, "¡Encargo aceptado!", new Color(0.35f, 0.18f, 0.12f, 1f), cellLabel + "  " + order.payout);
+    }
+
+    public void ShowGuardCaught(int moneyLost)
+    {
+        string detail = moneyLost > 0 ? "Te quitó Q" + moneyLost : "No tenías dinero que quitarte";
+        ShowEventToast(GetAlertSprite(), null, "¡Un guardia te atrapó!", ToastBadColor, detail);
+    }
+
+    // All of these share one banner and wait in line, so no event is lost when two happen close together.
+    private void ShowEventToast(Sprite icon, Sprite badge, string title, Color titleColor, string detail, string note = null)
+    {
+        InitializeUi();
+        if (eventToast == null)
+        {
+            return;
+        }
+
+        pendingToasts.Enqueue(new QueuedToast { Icon = icon, Badge = badge, Title = title, TitleColor = titleColor, Detail = detail, Note = note });
+        PumpEventToasts();
+    }
+
+    private void PumpEventToasts()
+    {
+        if (eventToast == null || pendingToasts.Count == 0)
+        {
+            return;
+        }
+
+        if (eventToast.IsShowing)
+        {
+            // With others waiting, the current one only stays long enough to be read.
+            eventToast.HurryUp(currentToastReadSeconds);
+            return;
+        }
+
+        DisplayEventToast(pendingToasts.Dequeue());
+    }
+
+    private void DisplayEventToast(QueuedToast toast)
+    {
+        eventToastIcon.sprite = toast.Icon;
+        eventToastIcon.enabled = toast.Icon != null;
+        eventToastBadge.sprite = toast.Badge;
+        eventToastBadge.enabled = toast.Badge != null;
+        eventToastTitleText.text = toast.Title;
+        eventToastTitleText.color = toast.TitleColor;
+        eventToastDetailText.text = toast.Detail;
+
+        // A note adds a third line, so the banner grows and stays up longer to give time to read it.
+        bool hasNote = !string.IsNullOrEmpty(toast.Note);
+        bool hasDetail = !string.IsNullOrEmpty(toast.Detail);
+        eventToastNoteText.text = hasNote ? toast.Note : string.Empty;
+        Vector2 size = new Vector2(hasNote ? 760f : 620f, hasNote ? 170f : 120f);
+        RectTransform toastRect = (RectTransform)eventToast.transform;
+        toastRect.sizeDelta = size;
+        toastRect.anchoredPosition = new Vector2(ToastRightEdgeX - size.x * 0.5f, hasNote ? -95f : -75f);
+        SetEventToastLine(eventToastTitleText, hasNote ? 50f : (hasDetail ? 22f : 0f));
+        SetEventToastLine(eventToastDetailText, hasNote ? 4f : -24f);
+        SetEventToastLine(eventToastNoteText, -40f);
+        currentToastReadSeconds = hasNote ? ToastWithNoteReadSeconds : ToastReadSeconds;
+        eventToast.Show(hasNote ? 4.5f : 2.8f);
+    }
+
+    private static void SetEventToastLine(Text line, float y)
+    {
+        Vector2 position = line.rectTransform.anchoredPosition;
+        line.rectTransform.anchoredPosition = new Vector2(position.x, y);
+    }
+
+    private void BuildHudToasts()
+    {
+        if (eventToast != null || rootCanvas == null)
+        {
+            return;
+        }
+
+        RectTransform root = CreateRect("HudToasts", rootCanvas.transform);
+        SetRect(root, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        // Above the kitchen menu so time keeps being felt while cooking, but below pause and results.
+        Transform pauseMenu = rootCanvas.transform.Find("PauseMenuRoot");
+        if (pauseMenu != null)
+        {
+            root.SetSiblingIndex(pauseMenu.GetSiblingIndex());
+        }
+
+        eventToast = CreateHudToast("EventToast", root, new Vector2(ToastRightEdgeX - 310f, -75f), new Vector2(620f, 120f));
+        eventToastIcon = CreateImage("Icon", eventToast.transform, Color.white);
+        eventToastIcon.preserveAspect = true;
+        SetRect(eventToastIcon.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(82f, 0f), new Vector2(92f, 92f), new Vector2(0.5f, 0.5f));
+
+        eventToastBadge = CreateImage("Badge", eventToast.transform, Color.white);
+        SetRect(eventToastBadge.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(118f, -26f), new Vector2(42f, 42f), new Vector2(0.5f, 0.5f));
+
+        eventToastTitleText = CreateText("Title", eventToast.transform, string.Empty, 36, FontStyle.Bold, TextAnchor.MiddleLeft);
+        SetRect(eventToastTitleText.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(60f, 22f), new Vector2(-180f, 44f), new Vector2(0.5f, 0.5f));
+
+        eventToastDetailText = CreateText("Detail", eventToast.transform, string.Empty, 28, FontStyle.Bold, TextAnchor.MiddleLeft);
+        SetRect(eventToastDetailText.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(60f, -24f), new Vector2(-180f, 38f), new Vector2(0.5f, 0.5f));
+
+        eventToastNoteText = CreateText("Note", eventToast.transform, string.Empty, 28, FontStyle.Bold, TextAnchor.MiddleLeft);
+        eventToastNoteText.color = ToastBadColor;
+        SetRect(eventToastNoteText.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(60f, -40f), new Vector2(-180f, 38f), new Vector2(0.5f, 0.5f));
+    }
+
+    private HudToast CreateHudToast(string objectName, Transform parent, Vector2 position, Vector2 size)
+    {
+        Image panel = CreateImage(objectName, parent, Color.white);
+        if (dialogPanelSprite != null)
+        {
+            panel.sprite = dialogPanelSprite;
+            panel.type = Image.Type.Sliced;
+        }
+        else
+        {
+            panel.color = new Color(1f, 0.97f, 0.9f, 1f);
+        }
+
+        SetRect(panel.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), position, size, new Vector2(0.5f, 0.5f));
+        panel.gameObject.AddComponent<CanvasGroup>();
+        return panel.gameObject.AddComponent<HudToast>();
+    }
+
+    // Green circle with a white check, shown on the corner of the delivered cake.
+    private static Sprite GetDeliveredCheckSprite()
+    {
+        if (deliveredCheckSprite != null)
+        {
+            return deliveredCheckSprite;
+        }
+
+        Color fill = new Color(0.25f, 0.66f, 0.30f, 1f);
+        Color edge = new Color(0.12f, 0.36f, 0.16f, 1f);
+        deliveredCheckSprite = ProceduralSprites.Create("DeliveredCheck", 64, 64, new Vector2(0.5f, 0.5f), (x, y) =>
+        {
+            Vector2 point = new Vector2(x, y);
+            float circle = (point - new Vector2(32f, 32f)).magnitude - 29f;
+            if (circle > 0f)
+            {
+                return Color.clear;
+            }
+
+            float check = Mathf.Min(
+                ProceduralSprites.CapsuleDistance(point, new Vector2(19f, 33f), new Vector2(28f, 22f), 4.5f),
+                ProceduralSprites.CapsuleDistance(point, new Vector2(28f, 22f), new Vector2(45f, 43f), 4.5f));
+            if (check <= 0f)
+            {
+                return Color.white;
+            }
+
+            return circle > -3.5f ? edge : fill;
+        });
+        return deliveredCheckSprite;
+    }
+
+    // Clock face for the time alerts.
+    private static Sprite GetClockSprite()
+    {
+        if (clockSprite != null)
+        {
+            return clockSprite;
+        }
+
+        Color face = new Color(1f, 0.98f, 0.90f, 1f);
+        Color ink = new Color(0.35f, 0.18f, 0.12f, 1f);
+        clockSprite = ProceduralSprites.Create("ToastClock", 64, 64, new Vector2(0.5f, 0.5f), (x, y) =>
+        {
+            Vector2 point = new Vector2(x, y);
+            Vector2 center = new Vector2(32f, 32f);
+            float circle = (point - center).magnitude - 29f;
+            if (circle > 0f)
+            {
+                return Color.clear;
+            }
+
+            float hands = Mathf.Min(
+                ProceduralSprites.CapsuleDistance(point, center, new Vector2(32f, 50f), 3f),
+                ProceduralSprites.CapsuleDistance(point, center, new Vector2(44f, 26f), 3f));
+            return circle > -4f || hands <= 0f ? ink : face;
+        });
+        return clockSprite;
+    }
+
+    // Red circle with a white exclamation mark for bad news: a guard, or a mistake on the cake.
+    private static Sprite GetAlertSprite()
+    {
+        if (alertSprite != null)
+        {
+            return alertSprite;
+        }
+
+        Color fill = new Color(0.82f, 0.20f, 0.16f, 1f);
+        Color edge = new Color(0.45f, 0.08f, 0.07f, 1f);
+        alertSprite = ProceduralSprites.Create("AlertBadge", 64, 64, new Vector2(0.5f, 0.5f), (x, y) =>
+        {
+            Vector2 point = new Vector2(x, y);
+            float circle = (point - new Vector2(32f, 32f)).magnitude - 29f;
+            if (circle > 0f)
+            {
+                return Color.clear;
+            }
+
+            float mark = Mathf.Min(
+                ProceduralSprites.CapsuleDistance(point, new Vector2(32f, 28f), new Vector2(32f, 47f), 5f),
+                (point - new Vector2(32f, 16f)).magnitude - 5f);
+            if (mark <= 0f)
+            {
+                return Color.white;
+            }
+
+            return circle > -3.5f ? edge : fill;
+        });
+        return alertSprite;
     }
 
     public void ShowInventoryMessage(string message)

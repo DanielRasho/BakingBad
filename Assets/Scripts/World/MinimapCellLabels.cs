@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Draws "#N" over every jail cell on the minimap layer so only the minimap camera sees it,
-// plus an icon with that prisoner's status: can order, waiting for a cake, cake ready in the inventory, or cooling down.
+// plus an icon with that prisoner's status: can order, waiting for a cake, being cooked, cake ready in the inventory, or cooling down.
 // The minimap camera rotates with the player, so labels counter-rotate to stay readable.
+// The cell being cooked for sticks to the minimap's rim when out of range, so it can be found from the kitchen.
 [DisallowMultipleComponent]
 public class MinimapCellLabels : MonoBehaviour
 {
@@ -22,6 +23,7 @@ public class MinimapCellLabels : MonoBehaviour
         None,
         CanOrder,
         WaitingForCake,
+        Cooking,
         CakeReady,
         Cooldown
     }
@@ -29,6 +31,8 @@ public class MinimapCellLabels : MonoBehaviour
     private sealed class CellView
     {
         public Transform Cell;
+        public Transform Label;
+        public Vector3 LabelHome;
         public PrisonerInteractable Prisoner;
         public SpriteRenderer Icon;
         public TextMesh Seconds;
@@ -41,7 +45,8 @@ public class MinimapCellLabels : MonoBehaviour
     [SerializeField] private Camera minimapCamera;
     [SerializeField] private Font font;
     [SerializeField] private string minimapLayerName = "Minimap";
-    [SerializeField] private float labelHeight = 4.8f;
+    [Tooltip("Must be above the minimap floor, or the status icons end up hidden under it.")]
+    [SerializeField] private float labelHeight = 6.1f;
     [SerializeField] private float characterSize = 0.22f;
     [SerializeField] private int fontSize = 60;
     [SerializeField] private float maxSnapDistance = 4f;
@@ -63,11 +68,17 @@ public class MinimapCellLabels : MonoBehaviour
     [SerializeField] private float readyPulseSpeed = 4f;
     [SerializeField] private float readyPulseAmount = 0.18f;
 
+    [Header("Minimap Rim")]
+    [Tooltip("How far inside the minimap's edge the out-of-range cell sits, in world units.")]
+    [SerializeField] private float rimInset = 2.2f;
+
     private readonly List<Transform> labels = new List<Transform>();
     private readonly List<CellView> cellViews = new List<CellView>();
     private static Sprite waitingIcon;
+    private static Sprite cookingIcon;
     private CakeInventory inventory;
     private PrisonOrderManager orderManager;
+    private KitchenOrderPrepUIController orderUi;
     private float nextRefreshTime;
 
     private void Start()
@@ -87,7 +98,7 @@ public class MinimapCellLabels : MonoBehaviour
         for (int i = 0; i < cellViews.Count; i++)
         {
             CellView view = cellViews[i];
-            if (view.Icon != null && view.Status == CellStatus.CakeReady)
+            if (view.Icon != null && (view.Status == CellStatus.CakeReady || view.Status == CellStatus.Cooking))
             {
                 view.Icon.transform.localScale = view.IconBaseScale * pulse;
             }
@@ -107,6 +118,29 @@ public class MinimapCellLabels : MonoBehaviour
             if (labels[i] != null)
             {
                 labels[i].rotation = upright;
+            }
+        }
+
+        UpdateCellLabelPositions();
+    }
+
+    private void UpdateCellLabelPositions()
+    {
+        Vector3 center = minimapCamera.transform.position;
+        float rimRadius = Mathf.Max(1f, minimapCamera.orthographicSize - rimInset);
+
+        for (int i = 0; i < cellViews.Count; i++)
+        {
+            CellView view = cellViews[i];
+            Vector2 offset = new Vector2(view.LabelHome.x - center.x, view.LabelHome.z - center.z);
+            if (view.Status == CellStatus.Cooking && offset.sqrMagnitude > rimRadius * rimRadius)
+            {
+                Vector2 onRim = offset.normalized * rimRadius;
+                view.Label.position = new Vector3(center.x + onRim.x, labelHeight, center.z + onRim.y);
+            }
+            else
+            {
+                view.Label.position = view.LabelHome;
             }
         }
     }
@@ -176,7 +210,7 @@ public class MinimapCellLabels : MonoBehaviour
     // and negative local z is toward the minimap camera.
     private CellView CreateCellView(Transform cell, Transform labelRoot, int layer)
     {
-        CellView view = new CellView { Cell = cell, Status = CellStatus.None };
+        CellView view = new CellView { Cell = cell, Label = labelRoot, LabelHome = labelRoot.position, Status = CellStatus.None };
 
         GameObject iconObject = new GameObject("StatusIcon");
         iconObject.transform.SetParent(labelRoot, false);
@@ -219,6 +253,12 @@ public class MinimapCellLabels : MonoBehaviour
             orderManager = FindAnyObjectByType<PrisonOrderManager>();
         }
 
+        if (orderUi == null)
+        {
+            // The kitchen UI lives in another additive scene, so keep looking until it has loaded.
+            orderUi = FindAnyObjectByType<KitchenOrderPrepUIController>(FindObjectsInactive.Include);
+        }
+
         for (int i = 0; i < cellViews.Count; i++)
         {
             CellView view = cellViews[i];
@@ -245,7 +285,12 @@ public class MinimapCellLabels : MonoBehaviour
         if (prisoner.HasActiveOrder)
         {
             readyCake = inventory != null ? inventory.FindByOrderId(prisoner.CurrentOrderId) : null;
-            return readyCake != null ? CellStatus.CakeReady : CellStatus.WaitingForCake;
+            if (readyCake != null)
+            {
+                return CellStatus.CakeReady;
+            }
+
+            return orderUi != null && orderUi.ActivePrepOrderId == prisoner.CurrentOrderId ? CellStatus.Cooking : CellStatus.WaitingForCake;
         }
 
         if (prisoner.IsCoolingDown)
@@ -267,6 +312,9 @@ public class MinimapCellLabels : MonoBehaviour
                 break;
             case CellStatus.WaitingForCake:
                 sprite = GetWaitingIcon();
+                break;
+            case CellStatus.Cooking:
+                sprite = GetCookingIcon();
                 break;
             case CellStatus.CakeReady:
                 sprite = readyCake != null && readyCake.icon != null ? readyCake.icon : GetWaitingIcon();
@@ -327,6 +375,39 @@ public class MinimapCellLabels : MonoBehaviour
         if (shape <= 0f)
         {
             return dots <= 0f ? inkColor : fillColor;
+        }
+
+        return shape <= outlineWidth ? inkColor : Color.clear;
+    }
+
+    // Chef hat for the order the player is cooking right now.
+    private static Sprite GetCookingIcon()
+    {
+        if (cookingIcon == null)
+        {
+            cookingIcon = ProceduralSprites.Create("MinimapCookingIcon", 64, 64, new Vector2(0.5f, 0.5f), SampleCookingIcon);
+        }
+
+        return cookingIcon;
+    }
+
+    private static Color SampleCookingIcon(float px, float py)
+    {
+        Color fillColor = new Color(1f, 0.98f, 0.90f, 1f);
+        Color inkColor = new Color(0.55f, 0.30f, 0.22f, 1f);
+        const float outlineWidth = 3.5f;
+
+        Vector2 point = new Vector2(px, py);
+        float puffs = Mathf.Min(
+            (point - new Vector2(19f, 38f)).magnitude - 12f,
+            Mathf.Min((point - new Vector2(32f, 45f)).magnitude - 13f, (point - new Vector2(45f, 38f)).magnitude - 12f));
+        float crown = RoundedBoxDistance(point, new Vector2(32f, 26f), new Vector2(17f, 16f), 3f);
+        float shape = Mathf.Min(puffs, crown);
+
+        if (shape <= 0f)
+        {
+            // The band across the base of the hat.
+            return Mathf.Abs(py - 20f) <= 1.8f ? inkColor : fillColor;
         }
 
         return shape <= outlineWidth ? inkColor : Color.clear;

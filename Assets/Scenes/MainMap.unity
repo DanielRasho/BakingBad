@@ -14426,6 +14426,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &775507747
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17259,6 +17260,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &942380545
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18674,6 +18676,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &986996846
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19322,6 +19325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!4 &1022665655 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6261905427159774980, guid: 6739d33a52b66154a976ebcfac60536d, type: 3}
@@ -24265,6 +24269,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &1293228129
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -26637,6 +26642,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &1401908149
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -29771,6 +29777,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &1561703481
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -33528,6 +33535,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &1787979737
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -33642,8 +33650,18 @@ MonoBehaviour:
   prisonerOrderCooldownSeconds: 15
   maxQueuedOrders: 8
   firstDayGoal: 350
-  goalIncreasePerDay: 100
+  goalIncreasePerDay: 50
   wrongDeliveryPenalty: 10
+  farCellIds:
+  - Cell6
+  - Cell7
+  - Cell8
+  - Cell9
+  - Cell10
+  - Cell11
+  farCellPayoutMultiplier: 2
+  timeAlertSeconds: e001000068010000f0000000780000003c0000001e000000
+  urgentTimeAlertSeconds: 60
   prisonerVisualSource: {fileID: 1282066328}
   prisonerVisualOffset: {x: 0, y: 0, z: 0}
   prisonerColliderCenter: {x: 0, y: 0.75, z: 0}
@@ -35167,7 +35185,7 @@ MonoBehaviour:
   minimapCamera: {fileID: 665936264}
   font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
   minimapLayerName: Minimap
-  labelHeight: 4.8
+  labelHeight: 6.1
   characterSize: 0.22
   fontSize: 60
   maxSnapDistance: 4
@@ -35186,6 +35204,7 @@ MonoBehaviour:
   refreshInterval: 0.2
   readyPulseSpeed: 4
   readyPulseAmount: 0.18
+  rimInset: 2.2
 --- !u!1001 &1902743143
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -36929,6 +36948,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &1984316513
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -37271,6 +37291,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &1995856532
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -37623,6 +37644,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &2011976464
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -39843,6 +39865,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a2a48f5a24bb2d48b441b544589dad6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OcclusionFadeTarget
+  fadeRenderersIndividually: 0
 --- !u!1001 &2107937492
 PrefabInstance:
   m_ObjectHideFlags: 0

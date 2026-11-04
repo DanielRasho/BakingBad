@@ -2,13 +2,9 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
-// Top view of the cake on its plate that the player covers with sauce by holding the mouse and dragging.
-// Everything lives in one small texture: the plate, the cake top and the painted sauce on top of both.
-// Coverage only counts sauce on the cake; sauce on the plate is drawn but doesn't count.
+// Top view of the cake on its plate that the player covers with sauce by dragging a bottle over it.
+// Everything lives in one small texture: the plate, the cake top and the sauce painted on the cake.
+// Sauce only sticks to the cake, so the plate stays clean and the cake keeps its shape.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RawImage))]
 public class ToppingPaintSurface : MonoBehaviour
@@ -16,11 +12,13 @@ public class ToppingPaintSurface : MonoBehaviour
     // Texture resolution; low on purpose so counting covered pixels every stroke is cheap.
     private const int Resolution = 128;
     private const float PlateRadiusFraction = 0.5f;
-    private const float CakeRadiusFraction = 0.42f;
+    private const float CakeRadiusFraction = 0.46f;
+    private const float CakeEdgeWidthPixels = 2f;
 
     [SerializeField] private float brushRadiusPixels = 6.5f;
     [SerializeField] private Color plateColor = new Color(0.82f, 0.84f, 0.87f, 1f);
     [SerializeField] private Color cakeColor = new Color(0.93f, 0.85f, 0.80f, 1f);
+    [SerializeField] private Color cakeEdgeColor = new Color(0.66f, 0.50f, 0.40f, 1f);
 
     private RawImage rawImage;
     private RectTransform rectTransform;
@@ -32,10 +30,8 @@ public class ToppingPaintSurface : MonoBehaviour
     private bool[] onCake;
     private bool[] painted;
     private int cakePixelCount;
-    private int coveredCakePixels;
     private int paintedPixels;
     private Color32 brushColor = new Color32(255, 255, 255, 255);
-    private bool hasBrush;
     private bool isInteractable;
     private bool strokeActive;
     private Vector2 lastStrokePoint;
@@ -47,7 +43,7 @@ public class ToppingPaintSurface : MonoBehaviour
     // Fraction (0-1) of the cake top covered with sauce.
     public float Coverage
     {
-        get { return cakePixelCount > 0 ? (float)coveredCakePixels / cakePixelCount : 0f; }
+        get { return cakePixelCount > 0 ? (float)paintedPixels / cakePixelCount : 0f; }
     }
 
     public bool HasPaint
@@ -72,7 +68,6 @@ public class ToppingPaintSurface : MonoBehaviour
     {
         EnsureInitialized();
         brushColor = color;
-        hasBrush = true;
     }
 
     public void SetInteractable(bool interactable)
@@ -89,11 +84,55 @@ public class ToppingPaintSurface : MonoBehaviour
         EnsureInitialized();
         Array.Copy(basePixels, pixels, pixels.Length);
         Array.Clear(painted, 0, painted.Length);
-        coveredCakePixels = 0;
         paintedPixels = 0;
         strokeActive = false;
         textureDirty = true;
         ApplyIfDirty();
+    }
+
+    // Reshapes the cake and wipes the sauce. The function gets a point relative to the center and the cake radius,
+    // both in texture pixels, and returns its distance to the outline: negative inside the cake.
+    public void SetCakeShape(Func<Vector2, float, float> shapeDistance)
+    {
+        EnsureInitialized();
+        BuildBasePixels(shapeDistance);
+        Clear();
+    }
+
+    public bool IsOverPlate(Vector2 screenPosition)
+    {
+        EnsureInitialized();
+        Vector2 texturePoint;
+        return TryGetTexturePoint(screenPosition, out texturePoint) && IsInside(onPlate, texturePoint);
+    }
+
+    public bool IsOverCake(Vector2 screenPosition)
+    {
+        EnsureInitialized();
+        Vector2 texturePoint;
+        return TryGetTexturePoint(screenPosition, out texturePoint) && IsInside(onCake, texturePoint);
+    }
+
+    // Pours sauce at this point; consecutive calls join into one solid stroke until EndStroke.
+    public void PaintAt(Vector2 screenPosition)
+    {
+        if (!isInteractable || !IsOverPlate(screenPosition))
+        {
+            strokeActive = false;
+            return;
+        }
+
+        Vector2 texturePoint;
+        TryGetTexturePoint(screenPosition, out texturePoint);
+        StampLine(strokeActive ? lastStrokePoint : texturePoint, texturePoint);
+        lastStrokePoint = texturePoint;
+        strokeActive = true;
+        ApplyIfDirty();
+    }
+
+    public void EndStroke()
+    {
+        strokeActive = false;
     }
 
     private void EnsureInitialized()
@@ -113,31 +152,7 @@ public class ToppingPaintSurface : MonoBehaviour
         onPlate = new bool[count];
         onCake = new bool[count];
         painted = new bool[count];
-        cakePixelCount = 0;
-
-        float center = Resolution * 0.5f;
-        float plateRadius = Resolution * PlateRadiusFraction - 1f;
-        float cakeRadius = Resolution * CakeRadiusFraction;
-        Color32 plate = plateColor;
-        Color32 cake = cakeColor;
-        Color32 clear = new Color32(0, 0, 0, 0);
-
-        for (int y = 0; y < Resolution; y++)
-        {
-            for (int x = 0; x < Resolution; x++)
-            {
-                int index = y * Resolution + x;
-                float distance = new Vector2(x + 0.5f - center, y + 0.5f - center).magnitude;
-                onPlate[index] = distance <= plateRadius;
-                onCake[index] = distance <= cakeRadius;
-                if (onCake[index])
-                {
-                    cakePixelCount++;
-                }
-
-                basePixels[index] = onCake[index] ? cake : (onPlate[index] ? plate : clear);
-            }
-        }
+        BuildBasePixels((point, radius) => point.magnitude - radius);
 
         texture = new Texture2D(Resolution, Resolution, TextureFormat.RGBA32, false);
         texture.name = "ToppingPaintSurface";
@@ -148,74 +163,38 @@ public class ToppingPaintSurface : MonoBehaviour
         Clear();
     }
 
-    private void Update()
+    private void BuildBasePixels(Func<Vector2, float, float> shapeDistance)
     {
-        if (texture == null)
+        cakePixelCount = 0;
+
+        float center = Resolution * 0.5f;
+        float plateRadius = Resolution * PlateRadiusFraction - 1f;
+        float cakeRadius = Resolution * CakeRadiusFraction;
+        Color32 plate = plateColor;
+        Color32 cake = cakeColor;
+        Color32 cakeEdge = cakeEdgeColor;
+        Color32 clear = new Color32(0, 0, 0, 0);
+
+        for (int y = 0; y < Resolution; y++)
         {
-            return;
+            for (int x = 0; x < Resolution; x++)
+            {
+                int index = y * Resolution + x;
+                Vector2 point = new Vector2(x + 0.5f - center, y + 0.5f - center);
+                float cakeDistance = shapeDistance(point, cakeRadius);
+                onPlate[index] = point.magnitude <= plateRadius;
+                onCake[index] = cakeDistance <= 0f;
+                if (onCake[index])
+                {
+                    cakePixelCount++;
+                    basePixels[index] = cakeDistance > -CakeEdgeWidthPixels ? cakeEdge : cake;
+                }
+                else
+                {
+                    basePixels[index] = onPlate[index] ? plate : clear;
+                }
+            }
         }
-
-        bool pressedThisFrame;
-        bool held;
-        bool releasedThisFrame;
-        Vector2 screenPosition;
-        if (!ReadMouse(out screenPosition, out pressedThisFrame, out held, out releasedThisFrame))
-        {
-            return;
-        }
-
-        if (!isInteractable || !hasBrush)
-        {
-            strokeActive = false;
-            return;
-        }
-
-        Vector2 texturePoint;
-        bool insideRect = TryGetTexturePoint(screenPosition, out texturePoint);
-
-        // A stroke has to start on the plate, but it keeps going if the mouse drifts off while held.
-        if (pressedThisFrame && insideRect && IsOnPlate(texturePoint))
-        {
-            strokeActive = true;
-            lastStrokePoint = texturePoint;
-            StampLine(texturePoint, texturePoint);
-        }
-        else if (strokeActive && held && insideRect)
-        {
-            StampLine(lastStrokePoint, texturePoint);
-            lastStrokePoint = texturePoint;
-        }
-
-        if (releasedThisFrame || !held)
-        {
-            strokeActive = false;
-        }
-
-        ApplyIfDirty();
-    }
-
-    private bool ReadMouse(out Vector2 screenPosition, out bool pressedThisFrame, out bool held, out bool releasedThisFrame)
-    {
-#if ENABLE_INPUT_SYSTEM
-        if (Mouse.current == null)
-        {
-            screenPosition = Vector2.zero;
-            pressedThisFrame = held = releasedThisFrame = false;
-            return false;
-        }
-
-        screenPosition = Mouse.current.position.ReadValue();
-        pressedThisFrame = Mouse.current.leftButton.wasPressedThisFrame;
-        held = Mouse.current.leftButton.isPressed;
-        releasedThisFrame = Mouse.current.leftButton.wasReleasedThisFrame;
-        return true;
-#else
-        screenPosition = Input.mousePosition;
-        pressedThisFrame = Input.GetMouseButtonDown(0);
-        held = Input.GetMouseButton(0);
-        releasedThisFrame = Input.GetMouseButtonUp(0);
-        return true;
-#endif
     }
 
     private bool TryGetTexturePoint(Vector2 screenPosition, out Vector2 texturePoint)
@@ -231,15 +210,14 @@ public class ToppingPaintSurface : MonoBehaviour
         float u = (localPoint.x - rect.xMin) / rect.width;
         float v = (localPoint.y - rect.yMin) / rect.height;
         texturePoint = new Vector2(u * Resolution, v * Resolution);
-        // A little slack outside the square so fast strokes reach the edge of the plate.
-        return u >= -0.1f && u <= 1.1f && v >= -0.1f && v <= 1.1f;
+        return u >= 0f && u <= 1f && v >= 0f && v <= 1f;
     }
 
-    private bool IsOnPlate(Vector2 texturePoint)
+    private static bool IsInside(bool[] mask, Vector2 texturePoint)
     {
         int x = Mathf.FloorToInt(texturePoint.x);
         int y = Mathf.FloorToInt(texturePoint.y);
-        return x >= 0 && y >= 0 && x < Resolution && y < Resolution && onPlate[y * Resolution + x];
+        return x >= 0 && y >= 0 && x < Resolution && y < Resolution && mask[y * Resolution + x];
     }
 
     // Stamps the brush along the segment so quick mouse moves leave a solid line instead of dots.
@@ -272,7 +250,7 @@ public class ToppingPaintSurface : MonoBehaviour
             for (int x = minX; x <= maxX; x++)
             {
                 int index = y * Resolution + x;
-                if (painted[index] || !onPlate[index])
+                if (painted[index] || !onCake[index])
                 {
                     continue;
                 }
@@ -287,11 +265,6 @@ public class ToppingPaintSurface : MonoBehaviour
                 painted[index] = true;
                 pixels[index] = brushColor;
                 paintedPixels++;
-                if (onCake[index])
-                {
-                    coveredCakePixels++;
-                }
-
                 textureDirty = true;
             }
         }

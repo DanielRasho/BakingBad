@@ -131,6 +131,7 @@ public class PrisonCookPlayerController : MonoBehaviour
         SetSneaking(false);
         isMoving = false;
         SetCurrentInteractable(null);
+        SetCurrentPrisoner(null);
     }
 
     private void Update()
@@ -530,7 +531,7 @@ public class PrisonCookPlayerController : MonoBehaviour
         float interval = Mathf.Max(0.02f, interactionScanInterval);
         nextInteractionScanTime = Time.unscaledTime + interval;
 
-        currentPrisoner = FindCurrentPrisoner();
+        SetCurrentPrisoner(InputLocked ? null : FindCurrentPrisoner());
         SetCurrentInteractable(FindCurrentInteractable());
     }
 
@@ -598,6 +599,26 @@ public class PrisonCookPlayerController : MonoBehaviour
         }
 
         return closestPrisoner;
+    }
+
+    private void SetCurrentPrisoner(PrisonerInteractable nextPrisoner)
+    {
+        if (currentPrisoner == nextPrisoner)
+        {
+            return;
+        }
+
+        if (currentPrisoner != null)
+        {
+            currentPrisoner.SetPromptVisible(false);
+        }
+
+        currentPrisoner = nextPrisoner;
+
+        if (currentPrisoner != null)
+        {
+            currentPrisoner.SetPromptVisible(true);
+        }
     }
 
     private void SetCurrentInteractable(KitchenInteractableStation nextInteractable)

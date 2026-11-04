@@ -38,6 +38,17 @@ public class PrisonOrderManager : MonoBehaviour
     [Tooltip("Money lost when the selected cake belongs to a different cell. Money never goes below zero.")]
     [SerializeField] private int wrongDeliveryPenalty = 10;
 
+    [Header("Far Cells")]
+    [Tooltip("Cells on the side of the prison away from the kitchen; they pay more so the walk is worth it.")]
+    [SerializeField] private string[] farCellIds = { "Cell6", "Cell7", "Cell8", "Cell9", "Cell10", "Cell11" };
+    [SerializeField] private int farCellPayoutMultiplier = 2;
+
+    [Header("Time Alerts")]
+    [Tooltip("Seconds left at which an alert appears, from most to least.")]
+    [SerializeField] private int[] timeAlertSeconds = { 480, 360, 240, 120, 60, 30 };
+    [Tooltip("From this many seconds left, alerts turn red.")]
+    [SerializeField] private int urgentTimeAlertSeconds = 60;
+
     [Header("Prisoners")]
     [SerializeField] private Transform prisonerVisualSource;
     [SerializeField] private Vector3 prisonerVisualOffset = Vector3.zero;
@@ -54,6 +65,7 @@ public class PrisonOrderManager : MonoBehaviour
     private readonly List<Sprite> prisonerSpriteDeck = new List<Sprite>();
     private Sprite lastPrisonerSprite;
     private float remainingDaySeconds;
+    private int nextTimeAlertIndex;
     private int earnedMoney;
     private int deliveredOrders;
     private int wrongDeliveries;
@@ -65,6 +77,12 @@ public class PrisonOrderManager : MonoBehaviour
     private void Start()
     {
         remainingDaySeconds = dayDurationSeconds;
+        // A day shorter than the first alerts just skips them.
+        while (nextTimeAlertIndex < timeAlertSeconds.Length && timeAlertSeconds[nextTimeAlertIndex] >= remainingDaySeconds)
+        {
+            nextTimeAlertIndex++;
+        }
+
         StartCoroutine(InitializeRoutine());
     }
 
@@ -123,9 +141,9 @@ public class PrisonOrderManager : MonoBehaviour
         if (orderUi != null)
         {
             orderUi.SetMoney(earnedMoney);
+            orderUi.ShowGuardCaught(lost);
         }
 
-        ShowInventoryMessage("¡Un guardia te atrapó! -Q" + lost);
         return lost;
     }
 
@@ -197,7 +215,10 @@ public class PrisonOrderManager : MonoBehaviour
             orderUi.SetMoney(earnedMoney);
         }
 
-        ShowInventoryMessage("Pastel entregado a " + prisoner.CellLabel + ". +Q" + payout);
+        if (orderUi != null)
+        {
+            orderUi.ShowCakeDelivered(cake.icon, prisoner.CellLabel, payout);
+        }
 
         prisoner.MarkDelivered(prisonerOrderCooldownSeconds);
         RefreshMapIfVisible();
@@ -269,6 +290,7 @@ public class PrisonOrderManager : MonoBehaviour
         if (orderUi != null)
         {
             orderUi.AddOrder(assignedOrder);
+            orderUi.ShowOrderAccepted(assignedOrder, prisoner.CellLabel);
         }
 
         AudioManager.Play(SfxId.OrderPickup);
@@ -309,10 +331,35 @@ public class PrisonOrderManager : MonoBehaviour
             orderUi.SetTimerSeconds(remainingDaySeconds);
         }
 
+        UpdateTimeAlerts();
+
         if (remainingDaySeconds <= 0f)
         {
             EndDay();
         }
+    }
+
+    private void UpdateTimeAlerts()
+    {
+        if (orderUi == null || nextTimeAlertIndex >= timeAlertSeconds.Length || remainingDaySeconds > timeAlertSeconds[nextTimeAlertIndex])
+        {
+            return;
+        }
+
+        int secondsLeft = timeAlertSeconds[nextTimeAlertIndex];
+        nextTimeAlertIndex++;
+        orderUi.ShowTimeAlert(FormatTimeAlert(secondsLeft), secondsLeft <= urgentTimeAlertSeconds);
+    }
+
+    private static string FormatTimeAlert(int secondsLeft)
+    {
+        if (secondsLeft < 60)
+        {
+            return "¡Te faltan " + secondsLeft + " segundos!";
+        }
+
+        int minutes = secondsLeft / 60;
+        return minutes == 1 ? "¡Te falta 1 minuto!" : "¡Te faltan " + minutes + " minutos!";
     }
 
     private void EndDay()
@@ -529,18 +576,25 @@ public class PrisonOrderManager : MonoBehaviour
         return lastPrisonerSprite;
     }
 
-    private static KitchenOrderPrepUIController.OrderDefinition CloneOrderForPrisoner(KitchenOrderPrepUIController.OrderDefinition source, PrisonerInteractable prisoner)
+    private int GetPayoutMultiplier(string cellId)
+    {
+        return Array.IndexOf(farCellIds, cellId) >= 0 ? farCellPayoutMultiplier : 1;
+    }
+
+    private KitchenOrderPrepUIController.OrderDefinition CloneOrderForPrisoner(KitchenOrderPrepUIController.OrderDefinition source, PrisonerInteractable prisoner)
     {
         string orderId = source.id + "_" + prisoner.CellId;
+        int basePayout = source.basePayout * GetPayoutMultiplier(prisoner.CellId);
         return new KitchenOrderPrepUIController.OrderDefinition
         {
             id = orderId,
             cellNumber = prisoner.CellLabel.Replace("Celda ", string.Empty),
-            payout = source.payout,
-            basePayout = source.basePayout,
+            payout = "Q" + basePayout,
+            basePayout = basePayout,
             orderTitle = source.orderTitle,
             cakeFlavor = source.cakeFlavor,
             topping = source.topping,
+            decorations = source.decorations,
             contrabandItem = source.contrabandItem,
             cakeSize = source.cakeSize,
             shapeType = source.shapeType,

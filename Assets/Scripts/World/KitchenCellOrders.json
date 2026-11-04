@@ -3,11 +3,15 @@
     {
       "id": "order_001",
       "cellNumber": "40",
-      "payout": "Q50",
-      "basePayout": 50,
-      "orderTitle": "Pastel de fresas con crema",
+      "payout": "Q35",
+      "basePayout": 35,
+      "orderTitle": "Pastel de fresa con caramelo",
       "cakeFlavor": "Fresa",
-      "topping": "Crema",
+      "topping": "Caramelo",
+      "decorations": [
+        { "item": "Cereza", "count": 2 },
+        { "item": "Chispa", "count": 1 }
+      ],
       "contrabandItem": "Cepillo de dientes",
       "cakeSize": "Small",
       "shapeType": "Square",
@@ -16,11 +20,15 @@
     {
       "id": "order_002",
       "cellNumber": "110",
-      "payout": "Q60",
-      "basePayout": 60,
+      "payout": "Q40",
+      "basePayout": 40,
       "orderTitle": "Pastel de vainilla con fresa",
       "cakeFlavor": "Vainilla",
       "topping": "Fresa",
+      "decorations": [
+        { "item": "Nougat", "count": 2 },
+        { "item": "Cereza", "count": 1 }
+      ],
       "contrabandItem": "Gato",
       "cakeSize": "Large",
       "shapeType": "Triangle",
@@ -29,11 +37,14 @@
     {
       "id": "order_003",
       "cellNumber": "60",
-      "payout": "Q35",
-      "basePayout": 35,
-      "orderTitle": "Pastel sencillo de vainilla con glaseado",
+      "payout": "Q25",
+      "basePayout": 25,
+      "orderTitle": "Pastel sencillo de vainilla con caramelo",
       "cakeFlavor": "Vainilla",
-      "topping": "Glaseado",
+      "topping": "Caramelo",
+      "decorations": [
+        { "item": "Chispa", "count": 2 }
+      ],
       "contrabandItem": "Lima para rejas",
       "cakeSize": "Medium",
       "shapeType": "Rectangle",
@@ -42,11 +53,14 @@
     {
       "id": "order_004",
       "cellNumber": "22",
-      "payout": "Q45",
-      "basePayout": 45,
+      "payout": "Q30",
+      "basePayout": 30,
       "orderTitle": "Pastel de chocolate ligero",
       "cakeFlavor": "Chocolate",
       "topping": "Chocolate",
+      "decorations": [
+        { "item": "Chispa", "count": 3 }
+      ],
       "contrabandItem": "Navaja suiza",
       "cakeSize": "Small",
       "shapeType": "Triangle",
@@ -55,11 +69,15 @@
     {
       "id": "order_005",
       "cellNumber": "17",
-      "payout": "Q55",
-      "basePayout": 55,
-      "orderTitle": "Pastel de chocolate con crema",
+      "payout": "Q40",
+      "basePayout": 40,
+      "orderTitle": "Pastel de chocolate con caramelo",
       "cakeFlavor": "Chocolate",
-      "topping": "Crema",
+      "topping": "Caramelo",
+      "decorations": [
+        { "item": "Nougat", "count": 1 },
+        { "item": "Chispa", "count": 2 }
+      ],
       "contrabandItem": "Llave inglesa",
       "cakeSize": "Large",
       "shapeType": "Rectangle",
@@ -68,11 +86,16 @@
     {
       "id": "order_006",
       "cellNumber": "85",
-      "payout": "Q70",
-      "basePayout": 70,
+      "payout": "Q45",
+      "basePayout": 45,
       "orderTitle": "Pastel alto de fresa",
       "cakeFlavor": "Fresa",
       "topping": "Fresa",
+      "decorations": [
+        { "item": "Cereza", "count": 3 },
+        { "item": "Nougat", "count": 1 },
+        { "item": "Chispa", "count": 1 }
+      ],
       "contrabandItem": "Telefono",
       "cakeSize": "Large",
       "shapeType": "Square",
@@ -81,11 +104,15 @@
     {
       "id": "order_007",
       "cellNumber": "03",
-      "payout": "Q40",
-      "basePayout": 40,
+      "payout": "Q30",
+      "basePayout": 30,
       "orderTitle": "Pastel clasico de vainilla",
       "cakeFlavor": "Vainilla",
-      "topping": "Azucar glass",
+      "topping": "Chocolate",
+      "decorations": [
+        { "item": "Cereza", "count": 1 },
+        { "item": "Nougat", "count": 1 }
+      ],
       "contrabandItem": "Martillo",
       "cakeSize": "Medium",
       "shapeType": "Square",
@@ -94,11 +121,15 @@
     {
       "id": "order_008",
       "cellNumber": "71",
-      "payout": "Q65",
-      "basePayout": 65,
+      "payout": "Q40",
+      "basePayout": 40,
       "orderTitle": "Pastel doble fresa",
       "cakeFlavor": "Fresa",
       "topping": "Fresa",
+      "decorations": [
+        { "item": "Chispa", "count": 2 },
+        { "item": "Cereza", "count": 2 }
+      ],
       "contrabandItem": "Desarmador",
       "cakeSize": "Medium",
       "shapeType": "Rectangle",
