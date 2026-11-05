@@ -4541,6 +4541,13 @@ MonoBehaviour:
   slotSprite: {fileID: 21300000, guid: 5f7187aafb1ee5d40b946a77b22dbf5a, type: 3}
   selectedSlotSprite: {fileID: 21300000, guid: 44d00688808f6524a972b4df5878a9c6, type: 3}
   font: {fileID: 12800000, guid: 3a7753bfce132d84b98f27266980fd2b, type: 3}
+  handEmptySprite: {fileID: 21300000, guid: a0c9348ebbd211f40a7fa3417f2a90ee, type: 3}
+  handFilledSprite: {fileID: 21300000, guid: 56c07d40ac2edc745922bdf2a1d222b2, type: 3}
+  handSize: {x: 112, y: 112}
+  handGap: 36
+  caughtBannerSprite: {fileID: 21300000, guid: 75bc9e5f9b3ea364996ce15e8b3bf2b2, type: 3}
+  caughtBannerSize: {x: 600, y: 240}
+  caughtBannerSeconds: 2
   slotSize: {x: 96, y: 104}
   slotSpacing: 14
   bottomMargin: 16

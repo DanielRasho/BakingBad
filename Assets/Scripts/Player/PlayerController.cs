@@ -95,6 +95,27 @@ public class PrisonCookPlayerController : MonoBehaviour
         get { EnsureInventory(); return inventory; }
     }
 
+    /// <summary>Moves the player instantly (a CharacterController ignores direct position changes unless disabled).</summary>
+    public void TeleportTo(Vector3 position)
+    {
+        EnsureController();
+
+        bool wasEnabled = controller != null && controller.enabled;
+        if (controller != null)
+        {
+            controller.enabled = false;
+        }
+
+        transform.position = position;
+        verticalVelocity = 0f;
+        dashTimeRemaining = 0f;
+
+        if (controller != null)
+        {
+            controller.enabled = wasEnabled;
+        }
+    }
+
     public void AddInputLock()
     {
         inputLockCount++;

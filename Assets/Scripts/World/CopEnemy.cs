@@ -80,6 +80,8 @@ public class CopEnemy : MonoBehaviour
     private float loseTimer;
     private float stunTimer;
     private bool isLeaving;
+    private float speedBoost = 1f;
+    private float baseAcceleration = 8f;
     private float leaveTimeout;
     private Vector3 lastKnownPlayerPos;
 
@@ -88,6 +90,9 @@ public class CopEnemy : MonoBehaviour
 
     /// <summary>Raised once at the moment the guard catches the player.</summary>
     public event System.Action PlayerCaught;
+
+    /// <summary>Same as PlayerCaught but static, for UI that does not know which guard caught the player.</summary>
+    public static event System.Action PlayerCaughtAny;
 
     public GuardState State
     {
@@ -130,6 +135,7 @@ public class CopEnemy : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         agent.speed = patrolSpeed;
+        baseAcceleration = agent.acceleration;
 
         // Feedback lives in its own components and only listens to this guard's events and properties.
         if (GetComponent<CopAudio>() == null)
@@ -185,6 +191,48 @@ public class CopEnemy : MonoBehaviour
         agent.SetDestination(exitPoint);
     }
 
+    /// <summary>
+    /// Forces the guard to chase the player no matter what they carry (used by RestrictedZone).
+    /// Calling it every frame keeps the chase alive so the guard cannot lose the player meanwhile.
+    /// </summary>
+    public void AlertToPlayer()
+    {
+        if (isLeaving || state == GuardState.Stunned)
+        {
+            return;
+        }
+
+        if (state == GuardState.Chase)
+        {
+            loseTimer = 0f;
+            return;
+        }
+
+        StartChase();
+    }
+
+    /// <summary>
+    /// Temporary multiplier on the chase speed (1 = normal). It never touches the configured values,
+    /// so setting it back to 1 restores the original speed.
+    /// </summary>
+    public void SetSpeedBoost(float multiplier)
+    {
+        speedBoost = Mathf.Max(0.1f, multiplier);
+
+        if (agent == null)
+        {
+            return;
+        }
+
+        // Acceleration scales too: with the default (8) a faster guard would take a while to reach full speed.
+        agent.acceleration = baseAcceleration * speedBoost;
+
+        if (state == GuardState.Chase && !isLeaving)
+        {
+            agent.speed = chaseSpeed * speedBoost;
+        }
+    }
+
     private void UpdateLeaving()
     {
         leaveTimeout -= Time.deltaTime;
@@ -217,7 +265,7 @@ public class CopEnemy : MonoBehaviour
             agent = GetComponent<NavMeshAgent>();
         }
 
-        agent.speed = state == GuardState.Chase ? chaseSpeed : patrolSpeed;
+        agent.speed = state == GuardState.Chase ? chaseSpeed * speedBoost : patrolSpeed;
     }
 
     /// <summary>Sets the patrol route and starts walking it from a random point so guards do not move in sync.</summary>
@@ -429,7 +477,7 @@ public class CopEnemy : MonoBehaviour
         alert = 1f;
         loseTimer = 0f;
         agent.isStopped = false;
-        agent.speed = chaseSpeed;
+        agent.speed = chaseSpeed * speedBoost;
         SetState(GuardState.Chase);
     }
 
@@ -481,6 +529,40 @@ public class CopEnemy : MonoBehaviour
         if (PlayerCaught != null)
         {
             PlayerCaught();
+        }
+
+        if (PlayerCaughtAny != null)
+        {
+            PlayerCaughtAny();
+        }
+
+        SendPlayerToKitchen();
+    }
+
+    // Caught players wake up in the kitchen, and every other guard stops hunting them.
+    private void SendPlayerToKitchen()
+    {
+        PlayerRespawnPoint respawn = PlayerRespawnPoint.Current;
+        if (respawn == null || player == null)
+        {
+            return;
+        }
+
+        player.TeleportTo(respawn.Position);
+
+        CopEnemy[] guards = FindObjectsByType<CopEnemy>(FindObjectsSortMode.None);
+        for (int i = 0; i < guards.Length; i++)
+        {
+            guards[i].StandDown();
+        }
+    }
+
+    /// <summary>Gives up the chase and goes back to patrolling (does nothing in any other state).</summary>
+    public void StandDown()
+    {
+        if (!isLeaving && state == GuardState.Chase)
+        {
+            ReturnToPatrol();
         }
     }
 
