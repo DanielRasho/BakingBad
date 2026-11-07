@@ -62,6 +62,8 @@ public class GuardManager : MonoBehaviour
     [SerializeField] private float despawnTimeoutSeconds = 30f;
     [Tooltip("Hard limit, so a typo in the Inspector cannot flood the scene.")]
     [SerializeField] private int maxGuards = 8;
+    [Tooltip("Writes a console line for each spawned guard with its speeds.")]
+    [SerializeField] private bool logSpawns = true;
 
     [Header("Manual Control")]
     [Tooltip("Used when 'Use Day Tiers' is off. Editing it in play mode spawns or despawns guards right away.")]
@@ -72,6 +74,20 @@ public class GuardManager : MonoBehaviour
     [Tooltip("When on, guard count and difficulty come from the tiers below, using DayProgress.CurrentDay.")]
     [SerializeField] private bool useDayTiers = false;
     [SerializeField] private List<GuardDayTier> dayTiers = new List<GuardDayTier>();
+
+    [Header("Day Scaling")]
+    [Tooltip("Guards added for each day past the active tier's first day. Capped by Max Guards.")]
+    [Min(0)] [SerializeField] private int extraGuardsPerDay = 1;
+    [Tooltip("Patrol speed added for each day past the active tier's first day. Chase speed is not scaled.")]
+    [Min(0f)] [SerializeField] private float patrolSpeedIncreasePerDay = 0.15f;
+    [Tooltip("Patrol speed never goes above this value.")]
+    [SerializeField] private float maxPatrolSpeed = 2.2f;
+    [Tooltip("Patrol speed always stays at least this much below chase speed, so a chase still feels different.")]
+    [Min(0f)] [SerializeField] private float minChaseSpeedMargin = 0.2f;
+    [Tooltip("Detection radii grow by this fraction of the tier's radius for each day past its first day (0.1 = +10% per day).")]
+    [Min(0f)] [SerializeField] private float detectionRadiusIncreasePerDay = 0.1f;
+    [Tooltip("Seconds between arriving guards, by day (first entry = day 1). The last entry repeats for later days. Empty = use the tier's value.")]
+    [SerializeField] private float[] spawnIntervalByDay = { 300f, 150f, 75f, 60f, 40f };
 
     private readonly List<CopEnemy> guards = new List<CopEnemy>();
     private bool inspectorChanged;
@@ -216,11 +232,29 @@ public class GuardManager : MonoBehaviour
             return;
         }
 
-        guardCount = tier.guardCount;
-        spawnIntervalSeconds = tier.spawnIntervalSeconds;
+        int daysIntoTier = Mathf.Max(0, day - tier.fromDay);
+        int count = Mathf.Clamp(tier.guardCount + daysIntoTier * extraGuardsPerDay, 0, Mathf.Max(0, maxGuards));
+
+        CopDifficulty scaled = tier.difficulty.Clone();
+        float speedCap = Mathf.Min(maxPatrolSpeed, scaled.chaseSpeed - minChaseSpeedMargin);
+        float scaledPatrol = scaled.patrolSpeed + daysIntoTier * patrolSpeedIncreasePerDay;
+        scaled.patrolSpeed = Mathf.Max(scaled.patrolSpeed, Mathf.Min(scaledPatrol, speedCap));
+
+        float radiusScale = 1f + daysIntoTier * detectionRadiusIncreasePerDay;
+        scaled.detectionRadius *= radiusScale;
+        scaled.sneakDetectionRadius *= radiusScale;
+
+        float interval = tier.spawnIntervalSeconds;
+        if (spawnIntervalByDay != null && spawnIntervalByDay.Length > 0)
+        {
+            interval = Mathf.Max(0f, spawnIntervalByDay[Mathf.Clamp(day - 1, 0, spawnIntervalByDay.Length - 1)]);
+        }
+
+        guardCount = count;
+        spawnIntervalSeconds = interval;
         despawnTimeoutSeconds = tier.despawnTimeoutSeconds;
-        ApplyDifficulty(tier.difficulty);
-        SetGuardCount(tier.guardCount);
+        ApplyDifficulty(scaled);
+        SetGuardCount(count);
     }
 
     private GuardDayTier FindTier(int day)
@@ -268,6 +302,16 @@ public class GuardManager : MonoBehaviour
         guard.SetWaypoints(patrolWaypoints, randomWaypoints);
         guards.Add(guard);
         nextSpawnTime = Time.time + Mathf.Max(0f, spawnIntervalSeconds);
+
+        if (logSpawns)
+        {
+            Debug.Log("GuardManager: spawned '" + instance.name + "' (day " + DayProgress.CurrentDay
+                + ", " + guards.Count + "/" + targetGuardCount + " guards) - patrol speed "
+                + difficulty.patrolSpeed.ToString("F2") + ", chase speed " + difficulty.chaseSpeed.ToString("F2")
+                + ", detection radius " + difficulty.detectionRadius.ToString("F2") + " (sneak " + difficulty.sneakDetectionRadius.ToString("F2") + ")"
+                + (guards.Count < targetGuardCount ? ", next arrival in " + spawnIntervalSeconds.ToString("F0") + "s" : ", roster complete"), this);
+        }
+
         return true;
     }
 

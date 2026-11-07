@@ -6,10 +6,25 @@ public static class DayProgress
 {
     public static int CurrentDay { get; private set; } = 1;
 
+    private static bool debugStartDayApplied;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetOnPlay()
     {
         CurrentDay = 1;
+        debugStartDayApplied = false;
+    }
+
+    // Testing only: jumps to the given day once per play session, so advancing days afterwards still works.
+    public static void ApplyDebugStartDay(int day)
+    {
+        if (debugStartDayApplied || day < 1)
+        {
+            return;
+        }
+
+        debugStartDayApplied = true;
+        CurrentDay = day;
     }
 
     public static void StartNewGame()

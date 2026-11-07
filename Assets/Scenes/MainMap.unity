@@ -21088,7 +21088,7 @@ MonoBehaviour:
     spawnIntervalSeconds: 300
     despawnTimeoutSeconds: 30
     difficulty:
-      patrolSpeed: 1.4
+      patrolSpeed: 1.55
       chaseSpeed: 2.4
       detectionRadius: 4
       sneakDetectionRadius: 1.5

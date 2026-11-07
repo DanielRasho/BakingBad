@@ -317,7 +317,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     private Text resultsPrimaryLabel;
     private bool resultsGoalReached;
     private Text controlsPopupTitleText;
-    private Text controlsPopupGoalText;
+    private GameObject dayIntroRoot;
+    private Text dayIntroTitleText;
+    private Text dayIntroGoalText;
+    private Text dayIntroHintText;
+    private bool dayIntroShown;
     private Text dayGoalHudText;
     private int currentDay = 1;
     private int dayGoal;
@@ -478,6 +482,16 @@ public class KitchenOrderPrepUIController : MonoBehaviour
     public bool IsOpen
     {
         get { return menuRoot != null && menuRoot.activeSelf; }
+    }
+
+    // True while the day intro or the controls popup is on screen; the day timer waits for it.
+    public bool IsStartPopupOpen
+    {
+        get
+        {
+            return (dayIntroRoot != null && dayIntroRoot.activeSelf)
+                || (controlsPopupRoot != null && controlsPopupRoot.activeSelf);
+        }
     }
 
     public int PerfectCakeCount
@@ -696,16 +710,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         currentDay = Mathf.Max(1, day);
         dayGoal = Mathf.Max(0, goal);
 
-        if (controlsPopupTitleText != null)
-        {
-            controlsPopupTitleText.text = "Día " + currentDay;
-        }
-
-        if (controlsPopupGoalText != null)
-        {
-            controlsPopupGoalText.text = "Meta del día: Q" + dayGoal;
-        }
-
+        RefreshDayIntroTexts();
         RefreshDayGoalHud();
     }
 
@@ -897,6 +902,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
 
         EnsureReferences();
+        currentDay = Mathf.Max(1, DayProgress.CurrentDay);
         defaultFont = detailTitleText != null && detailTitleText.font != null
             ? detailTitleText.font
             : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -911,6 +917,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         BuildResultsMenu();
         BuildMapOverlay();
         BuildControlsPopup();
+        BuildDayIntroPopup();
         BuildDayGoalHud();
         SetMenuVisible(false);
         SetOrderBoardInteractable(false);
@@ -924,7 +931,60 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         SetSelectedOrder(null, false);
         ActivateTab(FlavorTabIndex, true);
         isInitialized = true;
-        ShowControlsPopup();
+        ShowDayIntro();
+    }
+
+    // Every day starts with the day number and goal; the controls reminder only follows it on day 1.
+    private void ShowDayIntro()
+    {
+        if (dayIntroShown || dayIntroRoot == null)
+        {
+            ShowControlsPopup();
+            return;
+        }
+
+        dayIntroShown = true;
+        RefreshDayIntroTexts();
+        dayIntroRoot.SetActive(true);
+        AcquireStartPopupLock();
+    }
+
+    private void HandleDayIntroContinue()
+    {
+        if (dayIntroRoot != null)
+        {
+            dayIntroRoot.SetActive(false);
+        }
+
+        if (currentDay <= 1)
+        {
+            ShowControlsPopup();
+        }
+
+        if (!IsStartPopupOpen)
+        {
+            CloseControlsPopup();
+        }
+    }
+
+    private void RefreshDayIntroTexts()
+    {
+        if (dayIntroTitleText != null)
+        {
+            dayIntroTitleText.text = "Día " + currentDay;
+        }
+
+        if (dayIntroGoalText != null)
+        {
+            dayIntroGoalText.text = dayGoal > 0 ? "Meta del día: Q" + dayGoal : string.Empty;
+        }
+
+        if (dayIntroHintText != null)
+        {
+            dayIntroHintText.text = currentDay <= 1
+                ? "Junta ese dinero antes de que se acabe el tiempo o será Game Over."
+                : "Hoy hay más vigilancia: más guardias y rondas más rápidas.\nJunta la meta antes de que se acabe el tiempo.";
+        }
     }
 
     private void ShowControlsPopup()
@@ -936,6 +996,11 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         controlsPopupShown = true;
         controlsPopupRoot.SetActive(true);
+        AcquireStartPopupLock();
+    }
+
+    private void AcquireStartPopupLock()
+    {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
@@ -947,11 +1012,17 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         }
     }
 
+    // Closes the day intro and the controls popup and gives input back to the player.
     private void CloseControlsPopup()
     {
         if (controlsPopupRoot != null)
         {
             controlsPopupRoot.SetActive(false);
+        }
+
+        if (dayIntroRoot != null)
+        {
+            dayIntroRoot.SetActive(false);
         }
 
         if (playerController != null && controlsPopupLockHeld)
@@ -4383,18 +4454,10 @@ public class KitchenOrderPrepUIController : MonoBehaviour
         controlsPopupRoot = blocker.gameObject;
         SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
 
-        Image panel = CreateDialogPanel("ControlsPopupPanel", blocker.transform, new Vector2(860f, 600f));
+        Image panel = CreateDialogPanel("ControlsPopupPanel", blocker.transform, new Vector2(860f, 500f));
 
-        controlsPopupTitleText = CreateText("ControlsPopupTitle", panel.transform, "Día " + currentDay, 50, FontStyle.Bold, TextAnchor.MiddleCenter);
+        controlsPopupTitleText = CreateText("ControlsPopupTitle", panel.transform, "Controles", 50, FontStyle.Bold, TextAnchor.MiddleCenter);
         SetRect(controlsPopupTitleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -78f), new Vector2(720f, 64f), new Vector2(0.5f, 0.5f));
-
-        controlsPopupGoalText = CreateText("ControlsPopupGoal", panel.transform, dayGoal > 0 ? "Meta del día: Q" + dayGoal : string.Empty, 34, FontStyle.Normal, TextAnchor.MiddleCenter);
-        controlsPopupGoalText.color = new Color(0.62f, 0.20f, 0.12f, 1f);
-        SetRect(controlsPopupGoalText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(720f, 48f), new Vector2(0.5f, 0.5f));
-
-        Text goalHint = CreateText("ControlsPopupGoalHint", panel.transform, "Junta ese dinero antes de que se acabe el tiempo o será Game Over.", 22, FontStyle.Normal, TextAnchor.MiddleCenter);
-        goalHint.color = new Color(0.35f, 0.18f, 0.12f, 1f);
-        SetRect(goalHint.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -188f), new Vector2(700f, 56f), new Vector2(0.5f, 0.5f));
 
         Text body = CreateText(
             "ControlsPopupBody",
@@ -4405,7 +4468,7 @@ public class KitchenOrderPrepUIController : MonoBehaviour
             TextAnchor.MiddleLeft);
         body.horizontalOverflow = HorizontalWrapMode.Wrap;
         body.verticalOverflow = VerticalWrapMode.Overflow;
-        SetRect(body.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -30f), new Vector2(700f, 170f), new Vector2(0.5f, 0.5f));
+        SetRect(body.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(700f, 170f), new Vector2(0.5f, 0.5f));
 
         Button closeXButton = CreateButton("ControlsPopupCloseX", panel.transform, new Color(0.97f, 0.96f, 0.93f, 1f));
         StylePlacementButton(closeXButton, dialogCloseButtonSprite, false);
@@ -4422,6 +4485,43 @@ public class KitchenOrderPrepUIController : MonoBehaviour
 
         controlsPopupRoot.SetActive(false);
     }
+
+    private void BuildDayIntroPopup()
+    {
+        if (dayIntroRoot != null || rootCanvas == null)
+        {
+            return;
+        }
+
+        Image blocker = CreateImage("DayIntroRoot", rootCanvas.transform, new Color(0f, 0f, 0f, 0.55f));
+        dayIntroRoot = blocker.gameObject;
+        SetRect(blocker.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+        Image panel = CreateDialogPanel("DayIntroPanel", blocker.transform, new Vector2(760f, 440f));
+
+        dayIntroTitleText = CreateText("DayIntroTitle", panel.transform, "Día " + currentDay, 72, FontStyle.Bold, TextAnchor.MiddleCenter);
+        dayIntroTitleText.color = Color.black;
+        SetRect(dayIntroTitleText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -95f), new Vector2(640f, 96f), new Vector2(0.5f, 0.5f));
+
+        dayIntroGoalText = CreateText("DayIntroGoal", panel.transform, string.Empty, 38, FontStyle.Normal, TextAnchor.MiddleCenter);
+        dayIntroGoalText.color = new Color(0.62f, 0.20f, 0.12f, 1f);
+        SetRect(dayIntroGoalText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -178f), new Vector2(640f, 52f), new Vector2(0.5f, 0.5f));
+
+        dayIntroHintText = CreateText("DayIntroHint", panel.transform, string.Empty, 22, FontStyle.Normal, TextAnchor.MiddleCenter);
+        dayIntroHintText.color = new Color(0.35f, 0.18f, 0.12f, 1f);
+        dayIntroHintText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        dayIntroHintText.verticalOverflow = VerticalWrapMode.Overflow;
+        SetRect(dayIntroHintText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -240f), new Vector2(620f, 64f), new Vector2(0.5f, 0.5f));
+
+        Text continueLabel;
+        Button continueButton = CreateDialogButton("DayIntroContinue", panel.transform, dialogPrimaryButtonSprite, "¡A cocinar!", Color.black, new Vector2(0f, 80f), out continueLabel);
+        continueButton.onClick.AddListener(HandleDayIntroContinue);
+        ButtonSfx.Attach(continueButton, SfxId.UiClick);
+
+        RefreshDayIntroTexts();
+        dayIntroRoot.SetActive(false);
+    }
+
     private void BuildMapOverlay()
     {
         if (mapOverlayRoot != null || rootCanvas == null)

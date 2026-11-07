@@ -59,6 +59,12 @@ public class PrisonOrderManager : MonoBehaviour
 
     [Header("Debug")]
     [SerializeField] private bool logOrderFlow = true;
+    [Tooltip("Editor only. 0 = off. Starts the session on this day (applied once; later days advance normally).")]
+    [Min(0)] [SerializeField] private int debugStartDay = 0;
+    [Tooltip("Editor and development builds only. F6: end the day with the goal reached. F7: end the day as it is. F8: toggle fast-forward.")]
+    [SerializeField] private bool debugDayKeys = true;
+    [Tooltip("Time scale used by the F8 fast-forward. It speeds up the day timer, guard spawns and patrols alike.")]
+    [Range(2f, 30f)] [SerializeField] private float debugFastForwardScale = 10f;
 
     private readonly List<KitchenOrderPrepUIController.OrderDefinition> availableOrders = new List<KitchenOrderPrepUIController.OrderDefinition>();
     private readonly List<PrisonerInteractable> prisoners = new List<PrisonerInteractable>();
@@ -73,6 +79,14 @@ public class PrisonOrderManager : MonoBehaviour
     private bool mapVisible;
     private bool playerLockHeld;
     private bool referencesResolved;
+
+    // Runs before every Start, so GuardManager already sees the debug day when it spawns guards.
+    private void Awake()
+    {
+#if UNITY_EDITOR
+        DayProgress.ApplyDebugStartDay(debugStartDay);
+#endif
+    }
 
     private void Start()
     {
@@ -94,6 +108,7 @@ public class PrisonOrderManager : MonoBehaviour
         }
 
         HandleMapInput();
+        HandleDebugDayKeys();
         UpdateDayTimer();
     }
 
@@ -320,7 +335,8 @@ public class PrisonOrderManager : MonoBehaviour
 
     private void UpdateDayTimer()
     {
-        if (dayEnded)
+        // The clock starts once the player closes the day intro.
+        if (dayEnded || (orderUi != null && orderUi.IsStartPopupOpen))
         {
             return;
         }
@@ -365,6 +381,11 @@ public class PrisonOrderManager : MonoBehaviour
     private void EndDay()
     {
         dayEnded = true;
+        if (Time.timeScale > 1f)
+        {
+            Time.timeScale = 1f;
+        }
+
         if (player != null && !playerLockHeld)
         {
             player.AddInputLock();
@@ -403,6 +424,38 @@ public class PrisonOrderManager : MonoBehaviour
             WrongDeliveries = wrongDeliveries,
             UndeliveredOrders = undelivered
         };
+    }
+
+    private void HandleDebugDayKeys()
+    {
+#if (UNITY_EDITOR || DEVELOPMENT_BUILD) && ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (!debugDayKeys || dayEnded || keyboard == null)
+        {
+            return;
+        }
+
+        if (keyboard.f6Key.wasPressedThisFrame)
+        {
+            Time.timeScale = 1f;
+            earnedMoney = Mathf.Max(earnedMoney, DailyGoal);
+            SyncHud();
+            EndDay();
+        }
+        else if (keyboard.f7Key.wasPressedThisFrame)
+        {
+            Time.timeScale = 1f;
+            EndDay();
+        }
+        else if (keyboard.f8Key.wasPressedThisFrame && Time.timeScale > 0f)
+        {
+            // timeScale 0 means the pause menu is open; leave it alone.
+            bool fast = Time.timeScale <= 1f;
+            Time.timeScale = fast ? debugFastForwardScale : 1f;
+            Debug.Log("PrisonOrderManager: fast-forward " + (fast ? "ON (x" + debugFastForwardScale.ToString("F0") + ")" : "OFF")
+                + ", " + Mathf.CeilToInt(remainingDaySeconds) + "s left in the day", this);
+        }
+#endif
     }
 
     private void HandleMapInput()
